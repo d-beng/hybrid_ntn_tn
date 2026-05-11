@@ -1,0 +1,11 @@
+constellation:
+  name: "Starlink-Shell-1"
+  altitude_km: 550.0
+  inclination_deg: 53.0
+  num_planes: 72
+  total_satellites: 1584
+  phasing: 1
+  eirp_dbw: 40.0
+  g_t_db: 10.0
+  min_elevation_deg: 25.0
+  apply_j2: true

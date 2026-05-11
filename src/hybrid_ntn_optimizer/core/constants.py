@@ -23,58 +23,6 @@ FREQ_S_HZ: float  =  2.4e9    # S-band   (mobile NTN, NB-IoT)
 FREQ_L_HZ: float  =  1.6e9    # L-band   (Iridium / Inmarsat reference)
 
 # ---------------------------------------------------------------------------
-# Starlink (Phase-1 / Shell-1) reference constellation parameters
-# Source: FCC filing SpaceX-SATMOD2016-00116
-# ---------------------------------------------------------------------------
-STARLINK_SHELL_1 = dict(
-    name="Starlink-Shell-1",
-    altitude_km=550.0,
-    inclination_deg=53.0,
-    num_planes=72,
-    sats_per_plane=22,
-    total_satellites=1584,
-    phasing=1,
-    freq_hz=FREQ_KU_HZ,
-)
-
-# Convenience alias for the default Starlink profile used in this project
-STARLINK_DEFAULT = STARLINK_SHELL_1
-
-# Additional reference constellations (kept for extensibility)
-ONEWEB_SHELL_1 = dict(
-    name="OneWeb-Shell-1",
-    altitude_km=1200.0,
-    inclination_deg=87.9,
-    num_planes=18,
-    sats_per_plane=40,
-    total_satellites=720,
-    phasing=1,
-    freq_hz=FREQ_KU_HZ,
-)
-
-O3B_MEO = dict(
-    name="O3b-MEO",
-    altitude_km=8_062.0,
-    inclination_deg=0.0,
-    num_planes=1,
-    sats_per_plane=20,
-    total_satellites=20,
-    phasing=1,
-    freq_hz=FREQ_KA_HZ,
-)
-
-INMARSAT_GEO = dict(
-    name="Inmarsat-GEO",
-    altitude_km=35_786.0,
-    inclination_deg=0.0,
-    num_planes=1,
-    sats_per_plane=1,
-    total_satellites=1,
-    phasing=0,
-    freq_hz=FREQ_L_HZ,
-)
-
-# ---------------------------------------------------------------------------
 # Orbit altitude bands (km) – used for classification
 # ---------------------------------------------------------------------------
 LEO_ALT_RANGE_KM = (200.0, 2_000.0)

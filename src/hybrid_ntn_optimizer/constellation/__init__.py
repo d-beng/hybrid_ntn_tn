@@ -28,7 +28,6 @@ from hybrid_ntn_optimizer.constellation.propagator import (
     propagate_constellation,
     propagate_satellite,
     generate_ground_track,
-    elements_to_eci,
     iso8601_to_jd,
     advance_epoch,
 )
@@ -43,8 +42,6 @@ from hybrid_ntn_optimizer.constellation.visibility import (
 )
 from hybrid_ntn_optimizer.constellation.walker_delta import (
     build_walker_delta,
-    build_starlink_shell1,
-    starlink_shell1_params,
 )
 
 __all__ = [
@@ -54,13 +51,10 @@ __all__ = [
     "LEOConstellation",
     # Walker geometry
     "build_walker_delta",
-    "build_starlink_shell1",
-    "starlink_shell1_params",
     # Propagation
     "propagate_satellite",
     "propagate_constellation",
     "generate_ground_track",
-    "elements_to_eci",
     "iso8601_to_jd",
     "advance_epoch",
     # Visibility

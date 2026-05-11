@@ -1,14 +1,3 @@
-"""
-Shared data types for the hybrid NTN optimizer.
-
-Design principles
------------------
-* Pure dataclasses (frozen where immutable) — no business logic here.
-* Enumerations for all categorical values so callers get IDE auto-complete
-  and typo-safety.
-* Everything importable from ``hybrid_ntn_optimizer.core.types``.
-"""
-
 from __future__ import annotations
 
 import math

@@ -21,7 +21,6 @@ import math
 from typing import List
 
 from hybrid_ntn_optimizer.core.constants import (
-    STARLINK_DEFAULT,
     DEFAULT_MIN_ELEVATION_DEG,
 )
 from hybrid_ntn_optimizer.core.exceptions import InvalidParameterError
@@ -38,23 +37,6 @@ from hybrid_ntn_optimizer.core.utils import (
     walker_raan_spacing_deg,
     wrap_degrees,
 )
-
-
-# ---------------------------------------------------------------------------
-# Public factory helpers
-# ---------------------------------------------------------------------------
-
-def starlink_shell1_params() -> WalkerParameters:
-    """Return ``WalkerParameters`` for Starlink Shell-1 (the project default)."""
-    d = STARLINK_DEFAULT
-    return WalkerParameters(
-        total_satellites=d["total_satellites"],
-        num_planes=d["num_planes"],
-        phasing=d["phasing"],
-        inclination_deg=d["inclination_deg"],
-        altitude_km=d["altitude_km"],
-        orbit_type=OrbitType.LEO,
-    )
 
 
 def build_walker_delta(
@@ -147,30 +129,6 @@ def build_walker_delta(
             )
 
     return descriptors
-
-
-# ---------------------------------------------------------------------------
-# Convenience constructors for known constellations
-# ---------------------------------------------------------------------------
-
-def build_starlink_shell1(
-    eirp_dbw: float = 40.0,
-    g_t_db: float = 10.0,
-) -> List[SatelliteDescriptor]:
-    """
-    Build the 1 584-satellite Starlink Shell-1 constellation.
-
-    This is the primary NTN layer used in the project.  Internally calls
-    ``build_walker_delta`` with ``starlink_shell1_params()``.
-    """
-    return build_walker_delta(
-        params=starlink_shell1_params(),
-        freq_band=FrequencyBand.KU,
-        eirp_dbw=eirp_dbw,
-        g_t_db=g_t_db,
-        name_prefix="STARLINK",
-    )
-
 
 # ---------------------------------------------------------------------------
 # Validation helper

@@ -116,91 +116,6 @@ def great_circle_distance_m(
     return radius_m * 2.0 * math.asin(math.sqrt(a))
 
 
-def elevation_angle_deg(
-    sat_lat_deg: float,
-    sat_lon_deg: float,
-    sat_alt_m: float,
-    gnd_lat_deg: float,
-    gnd_lon_deg: float,
-    earth_radius_m: float = EARTH_RADIUS_M,
-) -> float:
-    """
-    Compute the elevation angle (degrees above horizon) from a ground point
-    to a satellite, using the spherical-Earth approximation.
-
-    Parameters
-    ----------
-    sat_lat_deg, sat_lon_deg : float
-        Satellite sub-satellite point.
-    sat_alt_m : float
-        Satellite altitude above the Earth's surface (metres).
-    gnd_lat_deg, gnd_lon_deg : float
-        Observer's geodetic location.
-    earth_radius_m : float
-        Earth's mean radius (metres).
-
-    Returns
-    -------
-    float
-        Elevation angle in degrees.  Negative → below horizon.
-    """
-    arc = great_circle_distance_m(
-        gnd_lat_deg, gnd_lon_deg, sat_lat_deg, sat_lon_deg, radius_m=1.0
-    )  # central angle in radians (radius=1 → arc = central angle)
-
-    re = earth_radius_m
-    rs = re + sat_alt_m
-
-    # Law-of-cosines slant range
-    slant = math.sqrt(re**2 + rs**2 - 2.0 * re * rs * math.cos(arc))
-
-    # Elevation from ground (law of sines / sine rule)
-    sin_el = (rs * math.cos(arc) - re) / slant
-    return math.degrees(math.asin(sin_el))
-
-
-def slant_range_m(
-    sat_lat_deg: float,
-    sat_lon_deg: float,
-    sat_alt_m: float,
-    gnd_lat_deg: float,
-    gnd_lon_deg: float,
-    earth_radius_m: float = EARTH_RADIUS_M,
-) -> float:
-    """
-    Slant range (metres) from ground point to satellite.
-    Uses the same spherical-Earth geometry as ``elevation_angle_deg``.
-    """
-    arc = great_circle_distance_m(
-        gnd_lat_deg, gnd_lon_deg, sat_lat_deg, sat_lon_deg, radius_m=1.0
-    )
-    re = earth_radius_m
-    rs = re + sat_alt_m
-    return math.sqrt(re**2 + rs**2 - 2.0 * re * rs * math.cos(arc))
-
-
-def azimuth_deg(
-    gnd_lat_deg: float,
-    gnd_lon_deg: float,
-    sat_lat_deg: float,
-    sat_lon_deg: float,
-) -> float:
-    """
-    Azimuth angle (degrees from North, clockwise) from ground to satellite
-    sub-point, using the forward azimuth formula on a sphere.
-    """
-    lat1 = math.radians(gnd_lat_deg)
-    lat2 = math.radians(sat_lat_deg)
-    dlon = math.radians(sat_lon_deg - gnd_lon_deg)
-
-    x = math.sin(dlon) * math.cos(lat2)
-    y = (
-        math.cos(lat1) * math.sin(lat2)
-        - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-    )
-    return wrap_degrees(math.degrees(math.atan2(x, y)))
-
-
 # ---------------------------------------------------------------------------
 # Walker-Delta spacing helpers
 # ---------------------------------------------------------------------------
@@ -256,8 +171,6 @@ def eci_to_geodetic(
 
     return lat_deg, lon_deg, alt_m
 
-
-def gmst_from_epoch(epoch_jd: float) -> float:
     """
     Approximate Greenwich Mean Sidereal Time (radians) from Julian Date.
 

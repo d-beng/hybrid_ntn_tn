@@ -1,27 +1,3 @@
-"""
-Abstract base class for all constellation types.
-
-Defines the minimal contract that every constellation implementation
-(LEO, MEO, GEO, custom) must satisfy so that upstream modules
-(link budget, beam allocation, optimizer) can work with any of them
-via a single interface.
-
-Extending to MEO / GEO
-----------------------
-Create a subclass, implement the three abstract methods, and override
-``orbit_type`` + ``constellation_type`` class attributes.
-
-Example::
-
-    class GEOConstellation(ConstellationBase):
-        orbit_type = OrbitType.GEO
-        constellation_type = ConstellationType.GEO_BELT
-
-        def snapshot(self, dt_s): ...
-        def visible_from(self, lat, lon, dt_s): ...
-        def best_satellite_from(self, lat, lon, dt_s): ...
-"""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -55,10 +31,6 @@ class ConstellationBase(ABC):
     orbit_type: OrbitType = OrbitType.LEO
     constellation_type: ConstellationType = ConstellationType.WALKER_DELTA
 
-    # ------------------------------------------------------------------
-    # Abstract interface
-    # ------------------------------------------------------------------
-
     @abstractmethod
     def snapshot(self, dt_s: float) -> List[SatelliteState]:
         """
@@ -74,8 +46,7 @@ class ConstellationBase(ABC):
         dt_s: float = 0.0,
     ) -> List[VisibilityRecord]:
         """
-        Return visible-satellite records from a ground point, sorted by
-        elevation (highest first).
+        Return visible-satellite records from a ground point       
         """
 
     @abstractmethod
@@ -87,10 +58,7 @@ class ConstellationBase(ABC):
     ) -> Optional[VisibilityRecord]:
         """Return the highest-elevation visible satellite, or None."""
 
-    # ------------------------------------------------------------------
-    # Concrete helpers (available to all subclasses)
-    # ------------------------------------------------------------------
-
+ 
     def coverage_at(
         self,
         lat_grid: List[float],
