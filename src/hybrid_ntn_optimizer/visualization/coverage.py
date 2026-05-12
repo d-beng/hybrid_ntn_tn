@@ -6,6 +6,9 @@ from hybrid_ntn_optimizer.constellation.leo import LEOConstellation
 from hybrid_ntn_optimizer.models.scenario import Region
 from hybrid_ntn_optimizer.coverage.mapper import tessellate_region, map_satellites_to_region
 
+
+
+
 def build_h3_geojson(cells):
     """Converts H3 cells into a GeoJSON FeatureCollection for Plotly."""
     features = []
@@ -27,6 +30,35 @@ def build_h3_geojson(cells):
     return {"type": "FeatureCollection", "features": features}
 
 
+def plot_static_grid(region: Region, filename="fast_grid_test.html"):
+    """Plots only the static H3 grid without any satellites or simulation."""
+    print(f"Generating static plot for {len(region.cells)} cells...")
+    
+    # 1. Build the GeoJSON from the Region's cells
+    # (Assuming build_h3_geojson is defined higher up in this file)
+    geojson_hexes = build_h3_geojson(region.cells)
+    
+    # 2. Create a dummy dataframe just for Plotly to render the polygons
+    df = pd.DataFrame([{"h3_id": cell.h3_id, "status": "Grid Cell"} for cell in region.cells])
+    
+    # 3. Render the Map
+    fig = px.choropleth_mapbox(
+        df,
+        geojson=geojson_hexes,
+        locations="h3_id",
+        color="status",
+        color_discrete_map={"Grid Cell": "rgba(0, 255, 255, 0.3)"}, # A nice translucent cyan
+        mapbox_style="carto-darkmatter",
+        center={"lat": 50.0, "lon": -85.0},  # Center on Ontario
+        zoom=3.5,
+        opacity=0.6,
+        title=f"Static H3 Grid: {region.name} ({len(region.cells)} cells at Res {region.h3_resolution})"
+    )
+    
+    fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0}, showlegend=False)
+    fig.write_html(filename)
+    print(f"Success! Grid map saved to {filename}")
+
 def plot_hex_coverage_animation(leo: LEOConstellation, region: Region, duration_s: float, time_step_s: float, filename="ontario_coverage.html"):
     """Generates an animated map of the hexagonal beams over time and exports data to Excel."""
     print(f"Tessellating {region.name} into H3 Hexagons...")
@@ -43,7 +75,10 @@ def plot_hex_coverage_animation(leo: LEOConstellation, region: Region, duration_
         print(f"Processing time step {dt_s:.1f}s / {duration_s:.1f}s", end="\r")
         
         # Ask the physics engine to map satellites to our ground cells
-        active_beams = map_satellites_to_region(leo, region, dt_s)
+        if step == 0:
+            active_beams = map_satellites_to_region(leo, region, dt_s, debug_log=True)
+        else:
+            active_beams = map_satellites_to_region(leo, region, dt_s, debug_log=False)
         covered_cell_ids = {beam.target_cell_id: beam for beam in active_beams}
         
         # Record the status of every cell at this specific second
