@@ -52,9 +52,10 @@ from hybrid_ntn_optimizer.core.exceptions import PropagationError
 from hybrid_ntn_optimizer.core.types import (
     ECIVector,
     KeplerianElements,
-    SatelliteDescriptor,
-    SatelliteState,
 )
+
+from hybrid_ntn_optimizer.models.satellite import SatelliteDescriptor, SatelliteState
+
 
 # Module-level Skyfield timescale — expensive to create, share one instance
 _TS = load.timescale()

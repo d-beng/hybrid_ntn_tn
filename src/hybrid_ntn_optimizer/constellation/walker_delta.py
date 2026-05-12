@@ -28,7 +28,6 @@ from hybrid_ntn_optimizer.core.types import (
     FrequencyBand,
     KeplerianElements,
     OrbitType,
-    SatelliteDescriptor,
     WalkerParameters,
 )
 from hybrid_ntn_optimizer.core.utils import (
@@ -37,6 +36,8 @@ from hybrid_ntn_optimizer.core.utils import (
     walker_raan_spacing_deg,
     wrap_degrees,
 )
+
+from hybrid_ntn_optimizer.models.satellite import SatelliteDescriptor, SatelliteState
 
 
 def build_walker_delta(

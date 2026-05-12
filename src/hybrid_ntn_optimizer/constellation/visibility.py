@@ -28,9 +28,11 @@ from skyfield.api import EarthSatellite, load, wgs84
 from hybrid_ntn_optimizer.core.constants import DEFAULT_MIN_ELEVATION_DEG
 from hybrid_ntn_optimizer.core.types import (
     GeoPoint,
-    SatelliteState,
     VisibilityRecord,
 )
+
+from hybrid_ntn_optimizer.models.satellite import SatelliteDescriptor, SatelliteState
+
 from hybrid_ntn_optimizer.constellation.propagator import (
     _TS,
     build_earth_satellite,

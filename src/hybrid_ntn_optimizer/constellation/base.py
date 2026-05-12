@@ -6,11 +6,11 @@ from typing import List, Optional
 from hybrid_ntn_optimizer.core.types import (
     ConstellationType,
     OrbitType,
-    SatelliteDescriptor,
-    SatelliteState,
     VisibilityRecord,
     WalkerParameters,
 )
+
+from hybrid_ntn_optimizer.models.satellite import SatelliteDescriptor, SatelliteState
 from hybrid_ntn_optimizer.constellation.visibility import CoverageCell
 
 

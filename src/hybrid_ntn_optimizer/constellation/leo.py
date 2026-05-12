@@ -13,13 +13,14 @@ from hybrid_ntn_optimizer.core.types import (
     FrequencyBand,
     GeoPoint,
     OrbitType,
-    SatelliteDescriptor,
-    SatelliteState,
     WalkerParameters,
 )
 from hybrid_ntn_optimizer.constellation.walker_delta import (
     build_walker_delta,
 )
+
+from hybrid_ntn_optimizer.models.satellite import SatelliteDescriptor, SatelliteState
+
 from hybrid_ntn_optimizer.constellation.propagator import (
     propagate_constellation,
     generate_ground_track,

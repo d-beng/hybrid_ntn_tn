@@ -1,8 +1,9 @@
 defaults:
-  - constellation.yaml
-  - cost.yaml
-  - mobility.yaml
-  - optimization.yaml
+  - constellation
+  - cost
+  - scenario: ontario
+  - mobility
+  - optimization
   - _self_
 
 epoch_utc: "2024-01-01T00:00:00"

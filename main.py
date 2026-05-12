@@ -1,9 +1,12 @@
 import hydra
 from omegaconf import DictConfig
+from hybrid_ntn_optimizer.coverage.mapper import tessellate_region
+from hybrid_ntn_optimizer.models.scenario import Region
 from hybrid_ntn_optimizer.constellation.leo import LEOConstellation
-from hybrid_ntn_optimizer.visualization.maps import plot_global_constellation
-from hybrid_ntn_optimizer.visualization.maps import plot_2d_interactive_animation
+from hybrid_ntn_optimizer.visualization.maps import plot_global_constellation,plot_2d_interactive_animation
 from hybrid_ntn_optimizer.visualization.interactive_3d import plot_3d_animated_globe
+from hybrid_ntn_optimizer.visualization.coverage import plot_hex_coverage_animation
+
 
 @hydra.main(version_base=None, config_path="configs", config_name="base")
 def run_simulation(cfg: DictConfig):
@@ -11,7 +14,13 @@ def run_simulation(cfg: DictConfig):
     
     # 1. Build Constellation
     leo = LEOConstellation.from_dict(cfg.constellation, epoch_utc=cfg.epoch_utc)
-    
+    active_region = Region(
+        name=cfg.scenario.name,
+        geojson_geometry=cfg.scenario.geojson_geometry,
+        h3_resolution=cfg.scenario.h3_resolution
+    )
+    tessellate_region(active_region)
+
     # 2. Simulation Loop
     # We will step through time to see satellites moving
     steps = int(cfg.sim_duration_s / cfg.time_step_s)
@@ -51,7 +60,12 @@ def run_simulation(cfg: DictConfig):
         
     if cfg.visualize_3d:
         plot_3d_animated_globe(leo, cfg.sim_duration_s, cfg.time_step_s)
-    
+    plot_hex_coverage_animation(
+        leo=leo, 
+        region=active_region, 
+        duration_s=cfg.sim_duration_s, 
+        time_step_s=cfg.time_step_s
+    )
     print("\nPropagation test complete. Files generated.")
 
 if __name__ == "__main__":

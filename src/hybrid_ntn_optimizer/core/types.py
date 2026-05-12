@@ -94,22 +94,6 @@ class ECIVector:
         return ECIVector(self.x - other.x, self.y - other.y, self.z - other.z)
 
 
-@dataclass(frozen=True)
-class SatelliteState:
-    """Instantaneous state of a satellite at a given epoch."""
-    satellite_id: str
-    epoch_utc: str          # ISO-8601
-    position_eci: ECIVector  # metres
-    velocity_eci: ECIVector  # m/s
-    lat_deg: float
-    lon_deg: float
-    altitude_m: float
-
-    @property
-    def altitude_km(self) -> float:
-        return self.altitude_m / 1_000.0
-
-
 # ---------------------------------------------------------------------------
 # Orbital element types
 # ---------------------------------------------------------------------------
@@ -186,32 +170,6 @@ class WalkerParameters:
     @property
     def altitude_m(self) -> float:
         return self.altitude_km * 1_000.0
-
-
-@dataclass
-class SatelliteDescriptor:
-    """
-    Static identifier and orbital parameters for one satellite.
-
-    Mutable so that orbital evolution (e.g. J2 precession) can update
-    ``raan_deg`` in-place during simulation.
-    """
-    sat_id: str
-    plane_index: int
-    slot_index: int            # position within the plane (0-based)
-    elements: KeplerianElements
-    orbit_type: OrbitType = OrbitType.LEO
-    freq_band: FrequencyBand = FrequencyBand.KU
-    eirp_dbw: float = 40.0    # dBW  (downlink EIRP)
-    g_t_db: float = 10.0      # dB/K (receive G/T)
-
-    def __repr__(self) -> str:
-        return (
-            f"SatelliteDescriptor(id={self.sat_id!r}, "
-            f"plane={self.plane_index}, slot={self.slot_index}, "
-            f"orbit={self.orbit_type.value})"
-        )
-
 
 # ---------------------------------------------------------------------------
 # Visibility / link result
