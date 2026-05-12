@@ -1,14 +1,15 @@
 name: "Ontario_Province"
-# WARNING: Do not use resolution 5 or 6 for a whole province yet! 
-# Resolution 3 gives ~59km wide hexagons, perfect for province-wide testing.
-h3_resolution: 3 
+# Resolution 3 gives ~59km wide hexagons
+# Resolution 2 gives ~118km wide hexagons
+h3_resolution: 2 
 geojson_geometry:
   type: "Polygon"
   coordinates: 
     - [
-        [-95.0, 41.8],  # Bottom Left (near Windsor/Lake Erie)
-        [-74.0, 44.0],  # Bottom Right (near Cornwall)
+        [-95.0, 41.7],  # Bottom Left (near Windsor/Lake Erie)
+        #[-74.0, 44.0],  # Bottom Right (near Cornwall)
+        [-74.0, 41.7],  # Bottom Right (near Cornwall)
         [-74.0, 57.0],  # Top Right (Hudson Bay)
         [-95.0, 57.0],  # Top Left (Manitoba border)
-        [-95.0, 41.8]   # Close the loop
+        [-95.0, 41.7]   # Close the loop
       ]

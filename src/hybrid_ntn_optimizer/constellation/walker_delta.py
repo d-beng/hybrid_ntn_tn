@@ -48,6 +48,9 @@ def build_walker_delta(
     eirp_dbw: float = 40.0,
     g_t_db: float = 10.0,
     name_prefix: str = "SAT",
+    max_spot_beams: int = 15,
+    beam_radius_nadir_km: float = 120.0,
+    max_steering_angle_deg: float = 45.0
 ) -> List[SatelliteDescriptor]:
     """
     Generate the initial Keplerian elements for all satellites in a
@@ -126,6 +129,9 @@ def build_walker_delta(
                     freq_band=freq_band,
                     eirp_dbw=eirp_dbw,
                     g_t_db=g_t_db,
+                    max_spot_beams=max_spot_beams,
+                    beam_radius_nadir_km=beam_radius_nadir_km,
+                    max_steering_angle_deg=max_steering_angle_deg
                 )
             )
 

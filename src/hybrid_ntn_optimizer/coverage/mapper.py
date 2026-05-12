@@ -30,7 +30,6 @@ def tessellate_region(region: Region) -> List[HexCell]:
     
     cell_ids = set()
     for poly in polygons:
-        # H3 v4 natively supports converting GeoJSON dicts to cells!
         cells = h3.geo_to_cells(poly, res=region.h3_resolution)
         cell_ids.update(cells)
             
@@ -41,16 +40,12 @@ def tessellate_region(region: Region) -> List[HexCell]:
         
     return region.cells
 
-
+"""
 def map_satellites_to_region(
     leo: LEOConstellation, 
-    region: Region,   # <--- CHANGED: Take the pre-built cells!
+    region: Region,  
     dt_s: float = 0.0
 ) -> List[Beam]:
-    """
-    Takes a pre-built list of ground cells, and asks the constellation engine 
-    to assign active RF Beams to them based on line-of-sight physics.
-    """
     active_beams = []
     
     for cell in region.cells:
@@ -66,4 +61,143 @@ def map_satellites_to_region(
                 is_active=True
             ))
             
+    return active_beams
+"""
+
+"""
+#ptimized Global Assignment: Gathers all possible links in the region, sorts them by best elevation, and assigns beams top-down while respecting the satellite hardware limits (max_spot_beams).
+def map_satellites_to_region(
+    leo: LEOConstellation, 
+    region: Region,  
+    dt_s: float = 0.0
+) -> List[Beam]:
+   
+    active_beams = []
+    satellite_beam_usage = {}
+    covered_cells = set()
+    
+    # 1. GATHER ALL POTENTIAL LINKS
+    all_possible_links = []
+    
+    for cell in region.cells:
+        visible_sats = leo.visible_from(lat_deg=cell.center_lat, lon_deg=cell.center_lon, dt_s=dt_s)
+        
+        for candidate_sat in visible_sats:
+            all_possible_links.append({
+                "cell_id": cell.h3_id,
+                "sat_id": candidate_sat.satellite_id,
+                "elevation_deg": candidate_sat.elevation_deg,
+                "slant_range_km": candidate_sat.slant_range_km
+            })
+            
+    # 2. SORT GLOBALLY (Highest Elevation First)
+    # We prioritize the strongest, most direct RF links across the whole map.
+    all_possible_links.sort(key=lambda x: x["elevation_deg"], reverse=True)
+    
+    # 3. ASSIGN BEAMS FROM THE TOP DOWN
+    for link in all_possible_links:
+        cell_id = link["cell_id"]
+        sat_id = link["sat_id"]
+        
+        # If this cell already got assigned a better beam earlier in the loop, skip it
+        if cell_id in covered_cells:
+            continue
+            
+        # Look up hardware limits using the helper method we added to leo.py
+        try:
+            sat_hardware = leo.get_descriptor(sat_id)
+            max_beams = sat_hardware.max_spot_beams
+        except AttributeError:
+            max_beams = 4  # Safe fallback just in case
+            
+        current_usage = satellite_beam_usage.get(sat_id, 0)
+        
+        # If the satellite still has a free beam, make the official assignment!
+        if current_usage < max_beams:
+            active_beams.append(Beam(
+                satellite_id=sat_id,
+                target_cell_id=cell_id,
+                elevation_deg=link["elevation_deg"],
+                slant_range_km=link["slant_range_km"],
+                is_active=True
+            ))
+            
+            # Mark the cell as covered and increment the satellite's beam counter
+            covered_cells.add(cell_id)
+            satellite_beam_usage[sat_id] = current_usage + 1
+            
+            # Optimization: If we have covered every single cell, we can exit early!
+            if len(covered_cells) == len(region.cells):
+                break
+                
+    return active_beams
+"""
+
+def map_satellites_to_region(
+    leo: LEOConstellation, 
+    region: Region,  
+    dt_s: float = 0.0
+) -> List[Beam]:
+    """
+    Maximizes Total Coverage (Least-Flexible First Algorithm):
+    Prioritizes ground cells that have the fewest satellite options to prevent 
+    highly-connected cells from stealing bottlenecked resources.
+    """
+    active_beams = []
+    satellite_beam_usage = {}
+    
+    # 1. GATHER ALL OPTIONS PER CELL
+    # List format: [{"cell_id": str, "options": [Sat1, Sat2, ...]}, ...]
+    cell_visibility_map = []
+    
+    for cell in region.cells:
+        visible_sats = leo.visible_from(lat_deg=cell.center_lat, lon_deg=cell.center_lon, dt_s=dt_s)
+        
+        if visible_sats:
+            # We sort the local options for this specific cell by elevation
+            # so if it has to pick, it picks its own best signal
+            sorted_local_options = sorted(visible_sats, key=lambda s: s.elevation_deg, reverse=True)
+            
+            cell_visibility_map.append({
+                "cell_id": cell.h3_id,
+                "options": sorted_local_options
+            })
+            
+    # 2. SORT GLOBALLY BY FEWEST OPTIONS (The Max Coverage Secret!)
+    # Cells that can only see 1 satellite will be at the front of the list.
+    # Cells that can see 10 satellites will be at the back.
+    cell_visibility_map.sort(key=lambda x: len(x["options"]))
+    
+    # 3. ASSIGN BEAMS
+    for target in cell_visibility_map:
+        cell_id = target["cell_id"]
+        assigned = False
+        
+        for candidate_sat in target["options"]:
+            sat_id = candidate_sat.satellite_id
+            
+            try:
+                sat_hardware = leo.get_descriptor(sat_id)
+                max_beams = sat_hardware.max_spot_beams
+            except AttributeError:
+                max_beams = 4 
+                
+            current_usage = satellite_beam_usage.get(sat_id, 0)
+            
+            # If this satellite has a free beam, take it!
+            if current_usage < max_beams:
+                active_beams.append(Beam(
+                    satellite_id=sat_id,
+                    target_cell_id=cell_id,
+                    elevation_deg=candidate_sat.elevation_deg,
+                    slant_range_km=candidate_sat.slant_range_km,
+                    is_active=True
+                ))
+                
+                satellite_beam_usage[sat_id] = current_usage + 1
+                assigned = True
+                
+                # We found a beam for this cell, stop looking and move to the next cell!
+                break 
+                
     return active_beams

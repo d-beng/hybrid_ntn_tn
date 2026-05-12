@@ -1,0 +1,40 @@
+constellation:
+  name: Starlink-Shell-1
+  altitude_km: 550.0
+  inclination_deg: 53.0
+  num_planes: 72
+  total_satellites: 1584
+  phasing: 1
+  eirp_dbw: 40.0
+  g_t_db: 10.0
+  min_elevation_deg: 25.0
+  apply_j2: true
+max_spot_beams: 15
+beam_radius_nadir_km: 120.0
+max_steering_angle_deg: 45.0
+enabled: true
+scenario:
+  name: Ontario_Province
+  h3_resolution: 2
+  geojson_geometry:
+    type: Polygon
+    coordinates:
+    - - - -95.0
+        - 41.7
+      - - -74.0
+        - 41.7
+      - - -74.0
+        - 57.0
+      - - -95.0
+        - 57.0
+      - - -95.0
+        - 41.7
+epoch_utc: '2024-01-01T00:00:00'
+time_step_s: 1800.0
+sim_duration_s: 86400.0
+observer:
+  name: Ottawa
+  lat: 45.4215
+  lon: -75.6972
+visualize_2d: true
+visualize_3d: true

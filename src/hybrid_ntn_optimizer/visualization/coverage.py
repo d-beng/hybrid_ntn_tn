@@ -28,7 +28,7 @@ def build_h3_geojson(cells):
 
 
 def plot_hex_coverage_animation(leo: LEOConstellation, region: Region, duration_s: float, time_step_s: float, filename="ontario_coverage.html"):
-    """Generates an animated map of the hexagonal beams over time."""
+    """Generates an animated map of the hexagonal beams over time and exports data to Excel."""
     print(f"Tessellating {region.name} into H3 Hexagons...")
     base_cells = region.cells
     geojson_hexes = build_h3_geojson(base_cells)
@@ -41,13 +41,13 @@ def plot_hex_coverage_animation(leo: LEOConstellation, region: Region, duration_
     for step in range(steps + 1):
         dt_s = step * time_step_s
         print(f"Processing time step {dt_s:.1f}s / {duration_s:.1f}s", end="\r")
+        
         # Ask the physics engine to map satellites to our ground cells
         active_beams = map_satellites_to_region(leo, region, dt_s)
         covered_cell_ids = {beam.target_cell_id: beam for beam in active_beams}
         
         # Record the status of every cell at this specific second
         for cell in base_cells:
-            print(f"Checking cell {cell.h3_id} at time {dt_s:.1f}s", end="\r")
             beam = covered_cell_ids.get(cell.h3_id)
             is_covered = 1 if beam else 0
             sat_id = beam.satellite_id if beam else "NO SIGNAL"
@@ -62,11 +62,33 @@ def plot_hex_coverage_animation(leo: LEOConstellation, region: Region, duration_
                 "color_val": is_covered
             })
             
+    # Clear the print line
+    print(" " * 50, end="\r")
+    
     df = pd.DataFrame(all_data)
     
     # Calculate overall SLA (Service Level Agreement)
     worst_coverage = df.groupby("time_s")["color_val"].mean().min() * 100
     print(f"Minimum Constellation Coverage during simulation: {worst_coverage:.2f}%")
+
+    # ==========================================
+    # NEW: EXCEL EXPORT LOGIC
+    # ==========================================
+    excel_filename = filename.replace('.html', '_data.xlsx')
+    print(f"Exporting dataset to {excel_filename}...")
+    
+    # Create a summary dataframe for the number of covered beams per timestamp
+    summary_df = df.groupby('time_s').agg(
+        total_beams=('h3_id', 'count'),
+        covered_beams=('color_val', 'sum')
+    ).reset_index()
+    summary_df['coverage_percentage'] = (summary_df['covered_beams'] / summary_df['total_beams']) * 100
+
+    # Write to a single Excel file with two sheets
+    with pd.ExcelWriter(excel_filename, engine='xlsxwriter') as writer:
+        summary_df.to_excel(writer, sheet_name='Coverage_Summary', index=False)
+        df.to_excel(writer, sheet_name='Detailed_Mapping', index=False)
+    # ==========================================
 
     print("Rendering Plotly Animation (this may take a moment)...")
     
@@ -78,7 +100,7 @@ def plot_hex_coverage_animation(leo: LEOConstellation, region: Region, duration_
         color="status",
         animation_frame="time_s",
         color_discrete_map={"Covered": "rgba(0, 255, 0, 0.5)", "Gap": "rgba(255, 0, 0, 0.5)"},
-        category_orders={"status": ["Covered", "Gap"]}, # <--- THE MAGIC FIX
+        category_orders={"status": ["Covered", "Gap"]}, 
         hover_name="satellite",
         hover_data={"h3_id": False, "status": False, "elevation": True, "time_s": False},
         mapbox_style="carto-darkmatter",

@@ -46,6 +46,9 @@ class LEOConstellation:
     eirp_dbw: float = 40.0
     g_t_db: float = 10.0
     min_elevation_deg: float = DEFAULT_MIN_ELEVATION_DEG
+    max_spot_beams: int = 15 
+    beam_radius_nadir_km: float = 120.0
+    max_steering_angle_deg: float = 45.0
     descriptors: List[SatelliteDescriptor] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -56,6 +59,9 @@ class LEOConstellation:
                 eirp_dbw=self.eirp_dbw,
                 g_t_db=self.g_t_db,
                 name_prefix=self.name.upper().replace(" ", "-")[:12],
+                max_spot_beams=self.max_spot_beams,
+                beam_radius_nadir_km=self.beam_radius_nadir_km,
+                max_steering_angle_deg=self.max_steering_angle_deg
             )
 
 
@@ -78,6 +84,9 @@ class LEOConstellation:
             eirp_dbw=cfg.get("eirp_dbw", 40.0),
             g_t_db=cfg.get("g_t_db", 10.0),
             min_elevation_deg=cfg.get("min_elevation_deg", DEFAULT_MIN_ELEVATION_DEG),
+            max_spot_beams=cfg.get("max_spot_beams", 15),
+            beam_radius_nadir_km=cfg.get("beam_radius_nadir_km", 120.0),
+            max_steering_angle_deg=cfg.get("max_steering_angle_deg", 45.0),
         )
 
     # ------------------------------------------------------------------

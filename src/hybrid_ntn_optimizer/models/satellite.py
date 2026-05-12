@@ -33,7 +33,10 @@ class SatelliteDescriptor:
     orbit_type: OrbitType = OrbitType.LEO
     freq_band: FrequencyBand = FrequencyBand.KU
     eirp_dbw: float = 40.0    
-    g_t_db: float = 10.0      
+    g_t_db: float = 10.0  
+    max_spot_beams: int = 15            
+    beam_radius_nadir_km: float = 200.0 
+    max_steering_angle_deg: float = 45.0  
 
     def __repr__(self) -> str:
         return (
