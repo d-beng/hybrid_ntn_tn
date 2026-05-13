@@ -10,6 +10,6 @@ constellation:
   min_elevation_deg: 25.0
   apply_j2: true
 
-max_spot_beams: 15
+max_spot_beams: 16
 beam_radius_nadir_km: 120.0
 max_steering_angle_deg: 45.0
