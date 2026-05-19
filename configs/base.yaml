@@ -2,13 +2,18 @@ defaults:
   - constellation
   - cost
   - scenario: ontario_full
+  - population: ontario_demographics
+  - terrestrial: 5g_base
   - mobility
   - optimization
   - _self_
 
 epoch_utc: "2024-01-01T00:00:00"
-time_step_s: 1800.0
-sim_duration_s: 86400.0  
+random_seed: 42
+simulation:
+  duration_s: 86400         # 24 hours (86400 in seconds)
+  time_step_s: 3600         # 1 hour per step
+  beam_capacity_mbps: 500.0 
 
 # Ground Observer for testing
 observer:

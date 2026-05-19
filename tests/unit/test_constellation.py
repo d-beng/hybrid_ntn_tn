@@ -26,7 +26,7 @@ from hybrid_ntn_optimizer.core.types import (
 from hybrid_ntn_optimizer.core.utils import (
     orbital_period_s,
     altitude_to_sma,
-    great_circle_distance_m,
+    haversine_distance,
     wrap_degrees,
     wrap_degrees_signed,
 )
@@ -77,12 +77,12 @@ class TestCoreUtils:
         assert 5600 < T < 5800
 
     def test_great_circle_same_point(self):
-        d = great_circle_distance_m(45.0, -75.0, 45.0, -75.0)
+        d = haversine_distance(45.0, -75.0, 45.0, -75.0)
         assert d == pytest.approx(0.0, abs=1e-3)
 
     def test_great_circle_equator_90deg(self):
         """Quarter of Earth equator ≈ 10 008 km."""
-        d = great_circle_distance_m(0, 0, 0, 90)
+        d = haversine_distance(0, 0, 0, 90)
         assert d == pytest.approx(10_007_543, rel=1e-3)
 
 

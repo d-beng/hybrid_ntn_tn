@@ -80,7 +80,7 @@ def sma_to_altitude_km(sma_m: float) -> float:
 # Geometry helpers
 # ---------------------------------------------------------------------------
 
-def great_circle_distance_m(
+def haversine_distance(
     lat1_deg: float,
     lon1_deg: float,
     lat2_deg: float,

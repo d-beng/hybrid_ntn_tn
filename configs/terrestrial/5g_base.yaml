@@ -1,0 +1,17 @@
+users_per_cluster_ratio: 40    
+density_threshold: 50       
+coverage_radius_km: 200.0
+use_physical_radius: True    
+bs_capacity_mbps: 10000.0
+
+# ==========================================
+# NEW: 3GPP RF Parameters for 5G NR
+# ==========================================
+p_tx_dbm: 43.0                # Base station transmit power (20W)
+g_tx_dbi: 15.0                # BS antenna gain
+g_rx_ue_dbi: 0.0              # User Equipment receive gain (mobile phone)
+carrier_freq_hz: 3.5e9        # 3.5 GHz (C-band)
+bandwidth_hz: 100e6           # 100 MHz channel
+sinr_min_db: -3.0             # Minimum SINR to maintain connection
+shadowing_std_dev_db: 8.0     # Log-normal shadowing standard deviation
+body_loss_db: 3.0             # Human body / building penetration loss

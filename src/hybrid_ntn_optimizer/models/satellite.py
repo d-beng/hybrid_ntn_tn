@@ -1,10 +1,12 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 from hybrid_ntn_optimizer.core.types import (
     ECIVector, 
     KeplerianElements, 
     OrbitType, 
     FrequencyBand
 )
+from hybrid_ntn_optimizer.models.beam import Beam
 
 @dataclass(frozen=True)
 class SatelliteState:
@@ -16,6 +18,7 @@ class SatelliteState:
     lat_deg: float
     lon_deg: float
     altitude_m: float
+    active_beams: List[Beam] = field(default_factory=list)   
 
     @property
     def altitude_km(self) -> float:
@@ -34,7 +37,8 @@ class SatelliteDescriptor:
     freq_band: FrequencyBand = FrequencyBand.KU
     eirp_dbw: float = 40.0    
     g_t_db: float = 10.0  
-    max_spot_beams: int = 15            
+    max_spot_beams: int = 15 
+     
     beam_radius_nadir_km: float = 200.0 
     max_steering_angle_deg: float = 45.0  
 
@@ -44,3 +48,5 @@ class SatelliteDescriptor:
             f"plane={self.plane_index}, slot={self.slot_index}, "
             f"orbit={self.orbit_type.value})"
         )
+    
+

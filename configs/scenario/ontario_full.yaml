@@ -1,6 +1,6 @@
 name: "Ontario_Province"
-# Resolution 3 gives ~59km wide hexagons
-# Resolution 2 gives ~118km wide hexagons
+# Resolution 3 gives ~140km wide hexagons
+# Resolution 2 gives ~xkm wide hexagons
 h3_resolution: 3 
 geojson_geometry:
   type: "MultiPolygon"
