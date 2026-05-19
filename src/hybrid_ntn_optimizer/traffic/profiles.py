@@ -3,11 +3,13 @@ import random
 import math
 from typing import List
 from omegaconf import DictConfig, OmegaConf
+from shapely.geometry import shape, Point  # Enforces spatial masking
+
 from hybrid_ntn_optimizer.models.user import User
 from hybrid_ntn_optimizer.models.scenario import Region
 
 def generate_users(cfg: DictConfig, region: Region) -> List[User]:
-    print("Generating Mobile Subscriber Population...")
+    print("Generating Mobile Subscriber Population using Repository Mesh Grid Masking...")
     users = []
     user_id_counter = 0
     
@@ -21,25 +23,62 @@ def generate_users(cfg: DictConfig, region: Region) -> List[User]:
     np.random.seed(cfg.random_seed)
     random.seed(cfg.random_seed)
     
-    for _ in range(num_city):
-        center_idx = np.random.choice(len(city_coords), p=city_weights)
-        center = city_coords[center_idx]
-        lat = np.random.normal(center[0], cfg.population.city_scatter_std_dev)
-        lon = np.random.normal(center[1], cfg.population.city_scatter_std_dev)
-        users.append(_build_user_profile(user_id_counter, lat, lon, region.h3_resolution, cfg))
-        user_id_counter += 1
+    # 1. Parse the native GeoJSON geometry from the region into a Shapely polygon
+    if hasattr(region, 'geojson_geometry') and region.geojson_geometry:
+        if not isinstance(region.geojson_geometry, dict):
+            boundary_dict = OmegaConf.to_container(region.geojson_geometry, resolve=True)
+        else:
+            boundary_dict = region.geojson_geometry
+        boundary_polygon = shape(boundary_dict)
+    else:
+        raise ValueError("❌ region.geojson_geometry is missing or empty! Cannot enforce strict repository masking.")
         
-    rural_scatter = cfg.population.get('rural_scatter_std_dev', 0.05)
+    # Get the exact bounding box of Ontario from the geometry (minx, miny, maxx, maxy)
+    min_lon, min_lat, max_lon, max_lat = boundary_polygon.bounds
+
+    # ==========================================
+    # 2. GENERATE URBAN USERS (Repository Approach)
+    # ==========================================
+    for _ in range(num_city):
+        is_inside = False
+        lat, lon = 0.0, 0.0
+        
+        while not is_inside:
+            center_idx = np.random.choice(len(city_coords), p=city_weights)
+            center = city_coords[center_idx]
+            # Gaussian distribution centered on the exact city coordinates
+            lat = np.random.normal(center[0], cfg.population.city_scatter_std_dev)
+            lon = np.random.normal(center[1], cfg.population.city_scatter_std_dev)
+            
+            # Strict spatial containment check
+            if boundary_polygon.contains(Point(lon, lat)):
+                is_inside = True
+                
+        users.append(_build_user_profile(user_id_counter, lat, lon, region.h3_resolution, cfg, boundary_polygon))
+        user_id_counter += 1
+
+    # ==========================================
+    # 3. GENERATE RURAL USERS (Repository Approach)
+    # ==========================================
     for _ in range(num_rural):
-        random_hex = random.choice(region.cells)
-        lat = np.random.normal(random_hex.center_lat, rural_scatter)
-        lon = np.random.normal(random_hex.center_lon, rural_scatter)
-        users.append(_build_user_profile(user_id_counter, lat, lon, region.h3_resolution, cfg))
+        is_inside = False
+        lat, lon = 0.0, 0.0
+        
+        while not is_inside:
+            # Uniform random sampling across the true latitude/longitude span of Ontario
+            lat = np.random.uniform(min_lat, max_lat)
+            lon = np.random.uniform(min_lon, max_lon)
+            
+            # Reject any coordinate falling outside provincial borders
+            if boundary_polygon.contains(Point(lon, lat)):
+                is_inside = True
+                
+        users.append(_build_user_profile(user_id_counter, lat, lon, region.h3_resolution, cfg, boundary_polygon))
         user_id_counter += 1
         
     return users
 
-def _build_user_profile(uid: int, lat: float, lon: float, res: int, cfg: DictConfig) -> User:
+def _build_user_profile(uid: int, lat: float, lon: float, res: int, cfg: DictConfig, boundary_polygon) -> User:
     roll = np.random.rand()
     cumulative_prob = 0.0
     u_type, demand = "Unknown", 0.0
@@ -66,23 +105,39 @@ def _build_user_profile(uid: int, lat: float, lon: float, res: int, cfg: DictCon
     )
     user.set_resolution(res)
     
+    # Configure human mobility dynamics indices
     num_attractors = cfg.population.mobility.num_attractors
     ranks = np.arange(1, num_attractors + 1)
     raw_probs = 1.0 / (ranks ** cfg.population.mobility.zipf_alpha)
     user.attractor_probs = raw_probs / np.sum(raw_probs)
     
+    # ==========================================
+    # 4. PROTECTED ATTRACTOR GENERATION 
+    # ==========================================
     user.attractors = [(lat, lon)]
     for _ in range(num_attractors - 1):
-        accepted = False
-        r_km = 0.0
-        while not accepted:
-            r_km = np.random.pareto(cfg.population.mobility.pareto_beta - 1.0) * cfg.population.mobility.delta_r0_km
-            if np.random.rand() < np.exp(-r_km / cfg.population.mobility.cutoff_kappa_km):
-                accepted = True
+        accepted_destination = False
+        attractor_lat, attractor_lon = 0.0, 0.0
         
-        earth_radius_km = 6371.0
-        r_deg = math.degrees(r_km / earth_radius_km)
-        theta = np.random.uniform(0, 2 * np.pi)
-        user.attractors.append((lat + (r_deg * np.sin(theta)), lon + (r_deg * np.cos(theta))))
+        # Enforce that no daily movement path vectors step across the boundary
+        while not accepted_destination:
+            accepted = False
+            r_km = 0.0
+            while not accepted:
+                r_km = np.random.pareto(cfg.population.mobility.pareto_beta - 1.0) * cfg.population.mobility.delta_r0_km
+                if np.random.rand() < np.exp(-r_km / cfg.population.mobility.cutoff_kappa_km):
+                    accepted = True
+            
+            earth_radius_km = 6371.0
+            r_deg = math.degrees(r_km / earth_radius_km)
+            theta = np.random.uniform(0, 2 * np.pi)
+            
+            attractor_lat = lat + (r_deg * math.degrees(math.sin(theta)))
+            attractor_lon = lon + (r_deg * math.degrees(math.cos(theta)) / math.cos(math.radians(lat)))
+            
+            if boundary_polygon.contains(Point(attractor_lon, attractor_lat)):
+                accepted_destination = True
+                
+        user.attractors.append((attractor_lat, attractor_lon))
         
     return user

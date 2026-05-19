@@ -1,7 +1,8 @@
-users_per_cluster_ratio: 40    
-density_threshold: 50       
-coverage_radius_km: 200.0
+users_per_cluster_ratio: 20    
+density_threshold: 20       
+coverage_radius_km: 10.0
 use_physical_radius: True    
+fixed_coverage_radius_km: True
 bs_capacity_mbps: 10000.0
 
 # ==========================================

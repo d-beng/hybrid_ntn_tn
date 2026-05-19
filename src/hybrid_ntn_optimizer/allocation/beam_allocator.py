@@ -169,7 +169,7 @@ def allocate_ntn_beams(
     min_elevation    = cfg.constellation.get("min_elevation_deg", 25.0)
     eirp_dbw         = cfg.constellation.get("eirp_dbw",          40.0)
     g_t_db           = cfg.constellation.get("g_t_db",            10.0)   # G/T [dB/K]
-    f_ntn            = cfg.constellation.get("freq_ghz",          12.0)
+    f_ntn            = cfg.constellation.get("freq_ghz",          2.2)
     bw_ntn           = cfg.constellation.get("bandwidth_hz",      250e6)
     sinr_min_ntn     = cfg.constellation.get("sinr_min_db",        0.0)
     theta_3db        = cfg.constellation.get("theta_3db_deg",       2.5)

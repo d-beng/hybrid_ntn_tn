@@ -22,7 +22,11 @@ def generate_terrestrial_network(cfg: DictConfig, users: List[User], h3_resoluti
         body_loss_db=tn_cfg.get("body_loss_db", 3.0)
     )
     print(f"Calculated Maximum TN Cell Radius via Link Budget: {dynamic_radius_km:.2f} km")
-
+    if tn_cfg.get('fixed_coverage_radius_km', False):
+        coverage_radius_km = tn_cfg.get('coverage_radius_km', 10.0)
+    else:
+        coverage_radius_km = dynamic_radius_km
+    print(f"Using TN Cell Radius: {coverage_radius_km:.2f} km (Fixed: {tn_cfg.get('fixed_coverage_radius_km', False)})")
     num_clusters = max(1, int(len(users) / tn_cfg.users_per_cluster_ratio))
     
     coordinates = np.array([[u.home_lat, u.home_lon] for u in users])
@@ -56,7 +60,7 @@ def generate_terrestrial_network(cfg: DictConfig, users: List[User], h3_resoluti
                 lon=lon, 
                 capacity_mbps=tn_cfg.bs_capacity_mbps,
                 use_physical_radius=tn_cfg.get('use_physical_radius', False),
-                coverage_radius_km=dynamic_radius_km
+                coverage_radius_km=coverage_radius_km
             )
             bs.set_resolution(h3_resolution)
             base_stations.append(bs)

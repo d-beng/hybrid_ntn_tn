@@ -8,6 +8,7 @@ from typing import List, Tuple
 C_M_S   = 299_792_458.0   # speed of light [m/s]
 K_B     = 1.380649e-23    # Boltzmann constant [J/K]
 T_SYS_K = 290.0           # reference system noise temperature [K]
+K_DB = -228.6  # Boltzmann constant [dBW/K/Hz]
 
 
 # ─────────────────────────────────────────────
@@ -94,8 +95,7 @@ def calculate_tn_sinr_capacity(
 # ─────────────────────────────────────────────
 # 2. NTN SINR & Capacity  (LEO / MEO / GEO)
 # ─────────────────────────────────────────────
-
-def calculate_ntn_sinr_capacity(
+def calculate_ntn_sinr_capacity_old(
     slant_range_km: float,
     off_axis_angles_deg: List[float],
     eirp_dbw: float = 40.0,          # satellite EIRP [dBW]  (= P_tx + G_tx on board)
@@ -176,6 +176,85 @@ def calculate_ntn_sinr_capacity(
 
     return sinr_db, capacity_mbps
 
+
+
+
+
+
+def calculate_ntn_sinr_capacity(
+    slant_range_km: float,
+    off_axis_angles_deg: List[float],
+    eirp_dbw: float = 40.0,
+    g_t_db: float = -15.5,
+    freq_ghz: float = 2.0,
+    bandwidth_hz: float = 40e6,
+    weather_loss_db: float = 1.0,
+    theta_3db_deg: float = 2.5,
+    sll_db: float = 25.0,
+):
+
+    fspl_db = _fspl_db_km_ghz(slant_range_km, freq_ghz)
+
+    # -----------------------------------------
+    # Carrier-to-noise density ratio
+    # -----------------------------------------
+    cn0_dbhz = (
+        eirp_dbw
+        + g_t_db
+        - fspl_db
+        - weather_loss_db
+        - K_DB
+    )
+
+    # -----------------------------------------
+    # Convert to carrier/noise over bandwidth
+    # -----------------------------------------
+    noise_bw_db = 10 * math.log10(bandwidth_hz)
+
+    cn_db = cn0_dbhz - noise_bw_db
+
+    # Desired carrier power relative to noise
+    s_linear = 10 ** (cn_db / 10.0)
+
+    # -----------------------------------------
+    # Interference accumulation
+    # -----------------------------------------
+    i_linear = 0.0
+
+    for theta_off in off_axis_angles_deg:
+
+        roll_off_db = min(
+            12.0 * (theta_off / theta_3db_deg) ** 2,
+            sll_db,
+        )
+
+        interferer_cn0_dbhz = (
+            eirp_dbw
+            - roll_off_db
+            + g_t_db
+            - fspl_db
+            - weather_loss_db
+            - K_DB
+        )
+
+        interferer_cn_db = (
+            interferer_cn0_dbhz
+            - noise_bw_db
+        )
+
+        i_linear += 10 ** (interferer_cn_db / 10.0)
+
+    sinr_linear = s_linear / (1.0 + i_linear)
+
+    sinr_db = 10 * math.log10(sinr_linear)
+
+    capacity_mbps = (
+        bandwidth_hz
+        * math.log2(1 + sinr_linear)
+        / 1e6
+    )
+
+    return sinr_db, capacity_mbps
 
 # ─────────────────────────────────────────────
 # 3. TN maximum cell radius  (link budget)

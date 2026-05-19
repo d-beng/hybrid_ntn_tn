@@ -5,20 +5,21 @@ constellation:
   num_planes: 72
   total_satellites: 1584
   phasing: 1
-  eirp_dbw: 40.0
-  g_t_db: 13.2 # corrected: G=35dBi, T=150K → G/T=13.2 dB/K
+  eirp_dbw: 50.0
+  g_t_db: -25.12 # corrected: G=35dBi, T=150K → G/T=13.2 dB/K
   min_elevation_deg: 25.0
   apply_j2: true
 
 # Hardware Constraints
-max_spot_beams: 16
+max_spot_beams: 32
 beam_radius_nadir_km: 120.0
 max_steering_angle_deg: 45.0
 
 # ==========================================
 # NEW: 3GPP Antenna and RF Parameters
 # ==========================================
-bandwidth_hz: 250000000           # 250 MHz satellite channel
+freq_ghz: 2.2                     # S-band frequency (2.2 GHz) for NTN
+bandwidth_hz: 40000000           # 40 MHz satellite channel
 sinr_min_db: 0.0              # NTN minimum SINR (Starlink can go down to -10 dB or -5.00, but we'll be conservative)
 theta_3db_deg: 2.5            # Half-power beamwidth
 sll_db: 25.0                  # Side-Lobe Level (isolation)

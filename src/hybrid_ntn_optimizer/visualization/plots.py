@@ -3,6 +3,7 @@ import math
 import h3
 import plotly.express as px
 import plotly.graph_objects as go
+from omegaconf import OmegaConf, DictConfig
 
 def build_h3_geojson(cells):
     """Generates GeoJSON polygons for H3 v4 cells."""
@@ -259,9 +260,8 @@ def plot_master_hybrid_animation_OLD(region, users, base_stations, beam_data, us
 
 
 
-
 def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_data, duration_s, time_step_s, filename="Final_Animation.html"):
-    print(f"\n🎨 Rendering Unified Visualization (This may take a moment to compile...)")
+    print(f"\n🎨 Rendering Unified God-Mode Visualization (Compiling frames...)")
     
     hex_geojson = build_h3_geojson(region.cells)
     bs_coverage_geojson = build_bs_coverage_geojson(base_stations)
@@ -275,7 +275,7 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
     # 1. DRAW BASE TRACES (Hour 0)
     # ==========================================
     
-    # Trace 0: The Hexagons (Choropleth)
+    # Trace 0: The Hexagons (Choropleth for Satellite Beams)
     initial_beams = [b["h3_id"] for b in beam_data if b["time_s"] == 0]
     initial_z = [1 if h3_id in initial_beams else 0 for h3_id in all_h3_ids]
     
@@ -286,7 +286,7 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
         name="Satellite Beams", hoverinfo="skip"
     ))
 
-    # Traces 1-4: The Users (Split by State to fix the Black Dot bug!)
+    # Traces 1-4: The Users (Separated to eliminate the string interpolation bug)
     user_states = [
         ("TN", "deepskyblue", "TN Served (5G)"),
         ("LEO", "hotpink", "NTN Served (Satellite)"),
@@ -306,7 +306,7 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
             text=[f"User {u['User_ID']}<br>State: {state_id}" for u in state_users]
         ))
 
-    # Trace 5: The 5G Towers (Static)
+    # Trace 5: The 5G Towers (Static Reference)
     fig.add_trace(go.Scattermapbox(
         lat=[bs.lat for bs in base_stations], lon=[bs.lon for bs in base_stations],
         mode='markers', marker=dict(size=10, color='orange', symbol='circle'),
@@ -323,18 +323,16 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
     for t_s in time_steps:
         hour_str = f"Hour {t_s / 3600.0:.1f}"
         
-        # Frame Data for Hexagons
+        # Synchronize active beams for the current frame
         active_beams = [b["h3_id"] for b in beam_data if b["time_s"] == t_s]
         frame_z = [1 if h3_id in active_beams else 0 for h3_id in all_h3_ids]
         
-        frame_data = [go.Choroplethmapbox(z=frame_z)] # Corresponds to Trace 0
+        frame_data = [go.Choroplethmapbox(z=frame_z)]
         
-        # Frame Data for Users
+        # Distribute users into their respective states for the current frame
         frame_users = [u for u in user_data if u["Hour"] == hour_str]
-        
         for state_id, _, _ in user_states:
             state_users = [u for u in frame_users if u["State"] == state_id]
-            # Replace the latitude and longitude arrays for each specific state
             frame_data.append(go.Scattermapbox(
                 lat=[u["Lat"] for u in state_users],
                 lon=[u["Lon"] for u in state_users],
@@ -344,8 +342,7 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
         frame = go.Frame(
             name=hour_str,
             data=frame_data,
-            # Tell Plotly to update Trace 0 (Hexagons), and Traces 1, 2, 3, 4 (Users)
-            traces=[0, 1, 2, 3, 4] 
+            traces=[0, 1, 2, 3, 4]  # Explicit target tracking for variable arrays
         )
         frames.append(frame)
         
@@ -357,14 +354,38 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
     fig.frames = frames
 
     # ==========================================
-    # 3. FINAL LAYOUT & UI
+    # 3. CONFIGURE STRUCTURAL LAYERS & UI
     # ==========================================
+    mapbox_layers = [
+        # Layer 1: Translucent 5G Footprints
+        dict(
+            source=bs_coverage_geojson, 
+            type="fill", 
+            color="rgba(255, 165, 0, 0.25)"
+        )
+    ]
+    
+    # Layer 2: In-memory Ontario Administrative Borders
+    if hasattr(region, 'geojson_geometry') and region.geojson_geometry:        
+        # FIX: Check if it's a Hydra DictConfig container, and convert it to a raw Python dict!
+        raw_geometry = region.geojson_geometry
+        if isinstance(raw_geometry, DictConfig):
+            raw_geometry = OmegaConf.to_container(raw_geometry, resolve=True)
+        mapbox_layers.append(dict(
+            source=raw_geometry,
+            type="line",
+            color="cyan",
+            line=dict(width=2)
+        ))
+    else:
+        print("⚠️ Warning: region.geojson_geometry missing or unreadable. Boundary lines omitted.")
+
     fig.update_layout(
-        title="Hybrid NTN-TN Real-Time Traffic Routing (Unified Visualization)",
+        title="Hybrid NTN-TN Real-Time Traffic Routing (System Level Engine)",
         mapbox=dict(
             style="carto-darkmatter",
             center={"lat": 46.0, "lon": -80.0}, zoom=4.5,
-            layers=[dict(source=bs_coverage_geojson, type="fill", color="rgba(255, 165, 0, 0.25)")]
+            layers=mapbox_layers
         ),
         margin={"r":0,"t":50,"l":0,"b":0},
         updatemenus=[{
@@ -378,4 +399,4 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
     )
     
     fig.write_html(filename)
-    print(f"✅ Master Visualization saved to {filename}")
+    print(f"✅ Master Visualization compiled successfully and saved to {filename}")
