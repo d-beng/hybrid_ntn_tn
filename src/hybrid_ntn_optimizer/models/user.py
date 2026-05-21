@@ -22,7 +22,13 @@ class User:
     coverage_type: str = "Unknown"
     tn_cell_id: int = -1
     experienced_outage: bool = False
-    
+    # NEW: 3GPP Proportional Fair & Network State Trackers
+    served_mbps: float = 0.0              # How much data they actually received this hour
+    locked_to_tn: bool = False            # TRUE = Trapped on 5G. FALSE = Can spill over to Satellite
+    historical_avg_mbps: float = 0.1      # Denominator for PF Score (starts at 0.1 to avoid div-by-zero)
+    spectral_efficiency: float = 0.0      # Instantaneous link quality (bits/sec/Hz)
+    achievable_rate_mbps: float = 0.0     # Theoretical max if given the whole tower
+    pf_score: float = 0.0                 # Network priority ranking
     attractors: List[Tuple[float, float]] = field(default_factory=list)
     attractor_probs: np.ndarray = field(default_factory=lambda: np.array([]))
     

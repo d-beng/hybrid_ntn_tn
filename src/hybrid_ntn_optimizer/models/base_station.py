@@ -2,7 +2,7 @@ import h3
 import math
 from dataclasses import dataclass, field
 from hybrid_ntn_optimizer.core.utils import haversine_distance
-from typing import Set
+from typing import Any, List, Set
 
 @dataclass
 class BaseStation:
@@ -10,6 +10,7 @@ class BaseStation:
     lat: float
     lon: float
     capacity_mbps: float  # Backhaul capacity
+    total_bandwidth_hz: float
     use_physical_radius: bool = False
     coverage_radius_km: float = 0.0
     
@@ -18,10 +19,13 @@ class BaseStation:
     
     # NEW: State tracking for the simulation loop
     active_users: int = 0
+    remaining_bandwidth_hz: float = field(init=False)         
+    attached_users: List[Any] = field(default_factory=list)     
     remaining_capacity_mbps: float = field(init=False)
     
     def __post_init__(self):
         self.remaining_capacity_mbps = self.capacity_mbps
+        self.remaining_bandwidth_hz = self.total_bandwidth_hz
 
     def set_resolution(self, resolution: int):
         self.center_h3_id = h3.latlng_to_cell(self.lat, self.lon, resolution)

@@ -295,7 +295,6 @@ def plot_master_hybrid_animation(region, users, base_stations, beam_data, user_d
     ]
     
     initial_users = [u for u in user_data if u["Hour"] == "Hour 0.0"]
-    
     for state_id, color, label in user_states:
         state_users = [u for u in initial_users if u["State"] == state_id]
         fig.add_trace(go.Scattermapbox(

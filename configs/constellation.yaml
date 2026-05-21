@@ -10,17 +10,17 @@ constellation:
   min_elevation_deg: 25.0
   apply_j2: true
 
-# Hardware Constraints
-max_spot_beams: 32
-beam_radius_nadir_km: 120.0
-max_steering_angle_deg: 45.0
+  # Hardware Constraints
+  max_spot_beams: 32
+  beam_radius_nadir_km: 120.0
+  max_steering_angle_deg: 45.0
 
-# ==========================================
-# NEW: 3GPP Antenna and RF Parameters
-# ==========================================
-freq_ghz: 2.2                     # S-band frequency (2.2 GHz) for NTN
-bandwidth_hz: 40000000           # 40 MHz satellite channel
-sinr_min_db: 0.0              # NTN minimum SINR (Starlink can go down to -10 dB or -5.00, but we'll be conservative)
-theta_3db_deg: 2.5            # Half-power beamwidth
-sll_db: 25.0                  # Side-Lobe Level (isolation)
-weather_loss_db: 1.0      # was missing — defaults to 1.0 in code
+  # ==========================================
+  # NEW: 3GPP Antenna and RF Parameters
+  # ==========================================
+  freq_ghz: 2.2                     # S-band frequency (2.2 GHz) for NTN
+  bandwidth_hz: 40000000           # 40 MHz satellite channel
+  sinr_min_db: 0.0              # NTN minimum SINR (Starlink can go down to -10 dB or -5.00, but we'll be conservative)
+  theta_3db_deg: 7.5            # Half-power beamwidth
+  sll_db: 25.0                  # Side-Lobe Level (isolation)
+  weather_loss_db: 1.0      # was missing — defaults to 1.0 in code

@@ -87,9 +87,11 @@ def calculate_tn_sinr_capacity(
     # ── SINR & capacity ──────────────────────────────────────────────────
     sinr_linear  = s_mw / (i_mw + n_mw)
     sinr_db      = 10.0 * math.log10(sinr_linear)
+    # NEW: Calculate bits/sec/Hz instead of aggregate Mbps
+    spectral_efficiency = math.log2(1.0 + sinr_linear)
     capacity_mbps = bandwidth_hz * math.log2(1.0 + sinr_linear) / 1e6
 
-    return sinr_db, capacity_mbps
+    return sinr_db, capacity_mbps, spectral_efficiency
 
 
 # ─────────────────────────────────────────────
@@ -253,8 +255,9 @@ def calculate_ntn_sinr_capacity(
         * math.log2(1 + sinr_linear)
         / 1e6
     )
+    spectral_efficiency = math.log2(1.0 + sinr_linear)
 
-    return sinr_db, capacity_mbps
+    return sinr_db, capacity_mbps, spectral_efficiency
 
 # ─────────────────────────────────────────────
 # 3. TN maximum cell radius  (link budget)

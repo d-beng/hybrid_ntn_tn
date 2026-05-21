@@ -59,6 +59,7 @@ def generate_terrestrial_network(cfg: DictConfig, users: List[User], h3_resoluti
                 lat=lat, 
                 lon=lon, 
                 capacity_mbps=tn_cfg.bs_capacity_mbps,
+                total_bandwidth_hz=tn_cfg.bandwidth_hz,
                 use_physical_radius=tn_cfg.get('use_physical_radius', False),
                 coverage_radius_km=coverage_radius_km
             )
