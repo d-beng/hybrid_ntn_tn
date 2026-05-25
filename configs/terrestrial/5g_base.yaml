@@ -1,5 +1,5 @@
-users_per_cluster_ratio: 20    
-density_threshold: 20       
+users_per_cluster_ratio: 10    
+density_threshold: 5       
 coverage_radius_km: 10.0
 use_physical_radius: True    
 fixed_coverage_radius_km: True
