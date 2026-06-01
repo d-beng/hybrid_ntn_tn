@@ -1,28 +1,32 @@
-total_city_users: 700
-total_rural_users: 300
+total_city_users: 2490
+total_rural_users: 510
 city_scatter_std_dev: 0.15
 rural_scatter_std_dev: 0.05
+use_worldpop: True
+worldpop_tif_path: "/home/db3n/Documents/Ph.D./Courses/Directed_Studies/data/raw/can_pd_2020_1km_UNadj.tif"
+worldpop_tif_restricted: False
+
 
 
 cities:
   Toronto:
     coords: [43.65, -79.38]
-    weight: 0.35
+    weight: 0.26
   Ottawa:
     coords: [45.42, -75.69]
-    weight: 0.30
+    weight: 0.21
   Hamilton:
     coords: [43.25, -79.87]
-    weight: 0.15
+    weight: 0.20
   London:
     coords: [42.98, -81.25]
-    weight: 0.11
+    weight: 0.14
   Kingston:
     coords: [44.23, -76.49]
-    weight: 0.07
+    weight: 0.12
   Sudbury:
     coords: [46.49, -81.01]
-    weight: 0.02
+    weight: 0.07
 
 # ------------------------------------------
 # STEPS MOBILITY MATH

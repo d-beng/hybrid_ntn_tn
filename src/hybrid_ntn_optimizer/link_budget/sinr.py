@@ -37,7 +37,374 @@ def _fspl_db_km_ghz(distance_km: float, freq_ghz: float) -> float:
 # 1. TN SINR & Capacity  (5G NR)
 # ─────────────────────────────────────────────
 
+
+def pathloss_3gpp_uma_nlos(
+    distance_m: float,
+    carrier_freq_hz: float,
+    ue_height_m: float = 1.5
+) -> float:
+    """
+    3GPP TR 38.901 Urban Macro (UMa) NLOS pathloss model.
+
+    Valid roughly for:
+    - 0.5–30 GHz
+    - urban macro deployments
+
+    Returns pathloss in dB.
+    """
+
+    d = max(distance_m, 10.0)
+    fc_ghz = carrier_freq_hz / 1e9
+
+    pl_db = (
+        13.54
+        + 39.08 * math.log10(d)
+        + 20.0 * math.log10(fc_ghz)
+        - 0.6 * (ue_height_m - 1.5)
+    )
+
+    return pl_db
+
+
 def calculate_tn_sinr_capacity(
+    dist_to_serving_m: float,
+    dist_to_interferers_m: List[float],
+    p_tx_dbm: float = 43.0,
+    g_tx_dbi: float = 15.0,
+    g_rx_ue_dbi: float = 0.0,
+    carrier_freq_hz: float = 3.5e9,
+    bandwidth_hz: float = 100e6,
+    shadowing_std_dev_db: float = 7.8,
+    body_loss_db: float = 3.0,
+
+    # Beamforming gains
+    serving_beamforming_gain_db: float = 18.0,
+    interferer_beamforming_suppression_db: float = 10.0,
+    # Receiver
+    noise_figure_db: float = 7.0,
+
+    # Capacity realism
+    implementation_loss_factor: float = 0.65,
+) -> Tuple[float, float, float]:
+    """
+    Realistic 5G NR downlink SINR and throughput model.
+
+    Returns:
+        sinr_db
+        throughput_mbps
+        spectral_efficiency_bps_hz
+    """
+
+    # ============================================================
+    # Serving signal power
+    # ============================================================
+
+    pl_serving_db = (
+        pathloss_3gpp_uma_nlos(
+            dist_to_serving_m,
+            carrier_freq_hz
+        )
+        + body_loss_db
+        + np.random.normal(0.0, shadowing_std_dev_db)
+    )
+
+    s_dbm = (
+        p_tx_dbm
+        + g_tx_dbi
+        + g_rx_ue_dbi
+        + serving_beamforming_gain_db
+        - pl_serving_db
+    )
+
+    s_mw = 10 ** (s_dbm / 10.0)
+
+    # ============================================================
+    # Aggregate interference
+    # ============================================================
+
+    i_mw = 0.0
+
+    for d_j in dist_to_interferers_m:
+
+        pl_j_db = (
+            pathloss_3gpp_uma_nlos(
+                d_j,
+                carrier_freq_hz
+            )
+            + body_loss_db
+            + np.random.normal(0.0, shadowing_std_dev_db)
+        )
+
+        p_rx_j_dbm = (
+            p_tx_dbm
+            + g_tx_dbi
+            + g_rx_ue_dbi
+            - interferer_beamforming_suppression_db
+            - pl_j_db
+        )
+
+        i_mw += 10 ** (p_rx_j_dbm / 10.0)
+
+    # ============================================================
+    # Thermal noise
+    # ============================================================
+
+    # Standard telecom formula:
+    # Noise[dBm] = -174 + 10log10(BW) + NF
+
+    n_dbm = (
+        -174.0
+        + 10.0 * math.log10(bandwidth_hz)
+        + noise_figure_db
+    )
+
+    n_mw = 10 ** (n_dbm / 10.0)
+
+    # ============================================================
+    # SINR
+    # ============================================================
+
+    sinr_linear = s_mw / (i_mw + n_mw)
+
+    sinr_db = 10.0 * math.log10(sinr_linear)
+
+    # ============================================================
+    # Spectral efficiency
+    # ============================================================
+
+    spectral_efficiency = (
+        implementation_loss_factor
+        * math.log2(1.0 + sinr_linear)
+    )
+
+    # ============================================================
+    # Throughput
+    # ============================================================
+
+    throughput_mbps = (
+        bandwidth_hz
+        * spectral_efficiency
+        / 1e6
+    )
+
+    return (
+        sinr_db,
+        throughput_mbps,
+        spectral_efficiency
+    )
+
+def calculate_tn_sinr_capacity_DEBUG(
+    dist_to_serving_m: float,
+    dist_to_interferers_m: List[float],
+
+    # TX/RX
+    p_tx_dbm: float = 43.0,
+    g_tx_dbi: float = 15.0,
+    g_rx_ue_dbi: float = 0.0,
+
+    # Beamforming
+    serving_beamforming_gain_db: float = 18.0,
+    interferer_beamforming_suppression_db: float = 10.0,
+
+    # Carrier
+    carrier_freq_hz: float = 3.5e9,
+    bandwidth_hz: float = 100e6,
+
+    # Channel
+    shadowing_std_dev_db: float = 7.8,
+    body_loss_db: float = 3.0,
+
+    # Receiver
+    noise_figure_db: float = 7.0,
+
+    # Realistic throughput scaling
+    implementation_loss_factor: float = 0.65,
+
+    # Debug
+    debug_low_sinr_threshold_db: float = -5.0,
+) -> Tuple[float, float, float]:
+    """
+    Compute realistic 5G NR downlink SINR and throughput.
+
+    Returns
+    -------
+    sinr_db : float
+        SINR [dB]
+
+    throughput_mbps : float
+        Estimated throughput [Mbps]
+
+    spectral_efficiency : float
+        bits/s/Hz
+    """
+
+    # ============================================================
+    # Serving signal
+    # ============================================================
+
+    pl_serving_db = (
+        pathloss_3gpp_uma_nlos(
+            dist_to_serving_m,
+            carrier_freq_hz
+        )
+        + body_loss_db
+        + np.random.normal(0.0, shadowing_std_dev_db)
+    )
+
+    s_dbm = (
+        p_tx_dbm
+        + g_tx_dbi
+        + g_rx_ue_dbi
+        + serving_beamforming_gain_db
+        - pl_serving_db
+    )
+
+    s_mw = 10 ** (s_dbm / 10.0)
+
+    # ============================================================
+    # Aggregate interference
+    # ============================================================
+
+    i_mw = 0.0
+    interferer_debug = []
+
+    for idx, d_j in enumerate(dist_to_interferers_m):
+
+        pl_j_db = (
+            pathloss_3gpp_uma_nlos(
+                d_j,
+                carrier_freq_hz
+            )
+            + body_loss_db
+            + np.random.normal(0.0, shadowing_std_dev_db)
+        )
+
+        p_rx_j_dbm = (
+            p_tx_dbm
+            + g_tx_dbi
+            + g_rx_ue_dbi
+            - interferer_beamforming_suppression_db
+            - pl_j_db
+        )
+
+        p_rx_j_mw = 10 ** (p_rx_j_dbm / 10.0)
+
+        i_mw += p_rx_j_mw
+
+        interferer_debug.append({
+            "idx": idx,
+            "distance_m": d_j,
+            "rx_power_dbm": p_rx_j_dbm,
+            "pathloss_db": pl_j_db
+        })
+
+    # ============================================================
+    # Thermal noise
+    # ============================================================
+
+    # Telecom-standard thermal noise:
+    #
+    # N[dBm] = -174 + 10log10(BW) + NF
+
+    n_dbm = (
+        -174.0
+        + 10.0 * math.log10(bandwidth_hz)
+        + noise_figure_db
+    )
+
+    n_mw = 10 ** (n_dbm / 10.0)
+
+    # ============================================================
+    # SINR
+    # ============================================================
+
+    sinr_linear = s_mw / (i_mw + n_mw)
+
+    sinr_db = 10.0 * math.log10(sinr_linear)
+
+    # ============================================================
+    # Spectral efficiency
+    # ============================================================
+
+    spectral_efficiency = (
+        implementation_loss_factor
+        * math.log2(1.0 + sinr_linear)
+    )
+
+    # ============================================================
+    # Throughput
+    # ============================================================
+
+    throughput_mbps = (
+        bandwidth_hz
+        * spectral_efficiency
+        / 1e6
+    )
+
+    # ============================================================
+    # DEBUG OUTPUT
+    # ============================================================
+
+    if sinr_db < debug_low_sinr_threshold_db:
+
+        print("\n================================================")
+        print("LOW SINR DEBUG")
+        print("================================================")
+
+        i_dbm = (
+            10.0 * math.log10(i_mw)
+            if i_mw > 0
+            else -999.0
+        )
+
+        print(f"SINR                     : {sinr_db:.2f} dB")
+        print(f"Serving signal           : {s_dbm:.2f} dBm")
+        print(f"Total interference       : {i_dbm:.2f} dBm")
+        print(f"Noise floor              : {n_dbm:.2f} dBm")
+
+        print(f"SIR                      : {s_dbm - i_dbm:.2f} dB")
+        print(f"SNR                      : {s_dbm - n_dbm:.2f} dB")
+        print(f"INR                      : {i_dbm - n_dbm:.2f} dB")
+
+        print(f"Serving distance         : {dist_to_serving_m:.2f} m")
+        print(f"Serving pathloss         : {pl_serving_db:.2f} dB")
+
+        print(f"Bandwidth                : {bandwidth_hz/1e6:.1f} MHz")
+        print(f"Carrier frequency        : {carrier_freq_hz/1e9:.2f} GHz")
+
+        print(f"Spectral efficiency      : {spectral_efficiency:.2f} bps/Hz")
+        print(f"Throughput               : {throughput_mbps:.2f} Mbps")
+
+        # --------------------------------------------------------
+        # Top interferers
+        # --------------------------------------------------------
+
+        interferer_debug.sort(
+            key=lambda x: x["rx_power_dbm"],
+            reverse=True
+        )
+
+        print("\nTop interferers:")
+
+        for x in interferer_debug[:5]:
+
+            print(
+                f"Cell {x['idx']:3d} | "
+                f"Dist = {x['distance_m']:8.1f} m | "
+                f"Rx = {x['rx_power_dbm']:8.2f} dBm | "
+                f"PL = {x['pathloss_db']:8.2f} dB"
+            )
+
+        print("================================================\n")
+
+    return (
+        sinr_db,
+        throughput_mbps,
+        spectral_efficiency
+    )
+
+
+def calculate_tn_sinr_capacity_WITHOUT_DEBUG(
     dist_to_serving_m: float,
     dist_to_interferers_m: List[float],
     p_tx_dbm: float = 43.0,          # BS transmit power [dBm]
