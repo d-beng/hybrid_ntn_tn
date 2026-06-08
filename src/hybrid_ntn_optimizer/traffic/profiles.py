@@ -254,7 +254,7 @@ def generate_users(cfg: DictConfig, region: Region) -> List[User]:
                         tasks.append((user_id_counter, strict_lats[idx], strict_lons[idx], region.h3_resolution, cfg, boundary_polygon))
                         user_id_counter += 1
 
-                num_cores = multiprocessing.cpu_count() 
+                num_cores = multiprocessing.cpu_count() - 1  # Leave one core free for the OS
                 print(f"🚀 Firing up {num_cores} CPU cores for parallel generation. This may take a few minutes...")
                 
                 # Chunksize batches the users together so the CPU cores aren't constantly communicating

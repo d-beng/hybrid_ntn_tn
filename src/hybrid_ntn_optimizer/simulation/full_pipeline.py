@@ -1,9 +1,11 @@
+from time import sleep
+
 import pandas as pd
 from typing import List, Dict, Any
 from omegaconf import DictConfig
 
 from hybrid_ntn_optimizer.models.user import User
-from hybrid_ntn_optimizer.models.base_station import BaseStation
+from hybrid_ntn_optimizer.models.base_station import BaseStation, DeploymentScenario
 from hybrid_ntn_optimizer.models.scenario import Region
 from hybrid_ntn_optimizer.constellation.leo import LEOConstellation
 from hybrid_ntn_optimizer.coverage.mapper import map_satellites_to_region
@@ -19,7 +21,6 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
     time_step_s = cfg.simulation.get("time_step_s", 3600)
     time_steps_s = list(range(0, duration_s + time_step_s, time_step_s))
     allow_spillover = cfg.simulation.get("allow_spillover", True) # Toggle for Rel-15 vs Rel-18 ATSSS
-    
     # Spatial Indexing (Map H3 hexes to candidate towers to speed up distance checks)
     hex_to_candidate_towers: Dict[str, List[BaseStation]] = {}
     for bs in base_stations:
@@ -33,12 +34,11 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
     beam_animation_data = []
     user_animation_data = []
     detailed_drop_log = [] # <--- NEW: Diagnostic drop tracker initialized
+    print("📁 Initializing chunked CSV log files...")
+    pd.DataFrame(columns=["Hour", "Hour_of_Day", "User_ID", "Lat", "Lon", "State"]).to_csv("user_hourly_states.csv", index=False)
+    pd.DataFrame(columns=["Time_s", "Hour", "User_ID", "Lat", "Lon", "Demand_Mbps", "TN_Eval_BS", "TN_Eval_MHz", "TN_Reason", "NTN_Eval_Beam", "NTN_Eval_MHz", "NTN_Reason", "Final_State"]).to_csv("detailed_drop_log.csv", index=False)
     
-    p_tx_dbm = cfg.terrestrial.get("p_tx_dbm", 43.0)
-    g_tx_dbi = cfg.terrestrial.get("g_tx_dbi", 15.0)
     g_rx_ue_dbi = cfg.terrestrial.get("g_rx_ue_dbi", 0.0)
-    f_tn = cfg.terrestrial.get("carrier_freq_hz", 3.5e9)
-    bw_tn = cfg.terrestrial.get("bandwidth_hz", 100e6)
     sinr_min_tn = cfg.terrestrial.get("sinr_min_db", -3.0)
     
     for t_s in time_steps_s:
@@ -85,17 +85,32 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
             
             for bs in candidate_towers:
                 d_m = haversine_distance(u.current_lat, u.current_lon, bs.lat, bs.lon)
-                
-                if (d_m / 1000.0) <= bs.coverage_radius_km or not bs.use_physical_radius:
-                    interferers_m = [
-                        haversine_distance(u.current_lat, u.current_lon, other.lat, other.lon)
-                        for other in candidate_towers if other.bs_id != bs.bs_id
-                    ]
-                    
+                if (d_m / 1000.0) <= bs.coverage_radius_km :
+                    d_m = max(d_m, bs.min_user_dist_m)
+
+                    # Compute interference from other towers in the same candidate set
+                    interferers = []
+                    for other in candidate_towers:
+                        if other.bs_id == bs.bs_id:
+                            continue
+                        dist = haversine_distance(u.current_lat, u.current_lon, other.lat, other.lon)
+                        # Only add to interference list if it's within the relevant propagation range
+                        if dist <= other.interference_cutoff_m:
+                            dist = max(dist, other.min_user_dist_m)
+                            interferers.append((other, dist))
+
                     sinr_db, capacity_mbps, spec_eff = calculate_tn_sinr_capacity(
-                        dist_to_serving_m=d_m, dist_to_interferers_m=interferers_m,
-                        p_tx_dbm=p_tx_dbm, g_tx_dbi=g_tx_dbi, g_rx_ue_dbi=g_rx_ue_dbi,
-                        carrier_freq_hz=f_tn, bandwidth_hz=bw_tn
+                        dist_to_serving_m=d_m, 
+                        interferers=interferers,
+                        scenario=bs.scenario,                    # Dynamic Scenario
+                        p_tx_dbm=bs.p_tx_dbm,                    # From BS object
+                        g_tx_dbi=bs.g_tx_dbi,                    # From BS object
+                        g_rx_ue_dbi=g_rx_ue_dbi,                 # UE-specific global
+                        carrier_freq_hz=bs.carrier_freq_hz,      # From BS object
+                        bandwidth_hz=bs.total_bandwidth_hz,            # From BS object
+                        bs_height_m=bs.bs_height_m,              # From BS object (INJECTED)
+                        shadow_sigma_los_db=bs.shadow_sigma_los_db, # From BS object (INJECTED)
+                        shadow_sigma_nlos_db=bs.shadow_sigma_nlos_db # From BS object (INJECTED)
                     )
                     
                     if sinr_db > best_sinr:
@@ -197,14 +212,27 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
                     entry["user"].coverage_type = "DROPPED"
         #print(user_animation_data)
         for u in users:
-            user_animation_data.append({
-                "Hour": f"Hour {absolute_hour:.1f}",  # "Hour 0.0", "Hour 24.0", "Hour 48.0" — always unique
-                "Hour_of_Day": round(hour_of_day, 2), # keep for display/analysis if needed
-                "User_ID": u.user_id,
-                "Lat": u.current_lat, 
-                "Lon": u.current_lon,
-                "State": u.coverage_type
-            })
+            VISUALISTION_SAMPLING = cfg.simulation.get("visualization_sampling", False)
+            VISUALIZATION_SAMPLE_RATE = cfg.simulation.get("visualization_sample_rate", 1)
+            if VISUALISTION_SAMPLING:
+                if u.user_id % VISUALIZATION_SAMPLE_RATE == 0:
+                    user_animation_data.append({
+                        "Hour": f"Hour {absolute_hour:.1f}",  # "Hour 0.0", "Hour 24.0", "Hour 48.0" — always unique
+                        "Hour_of_Day": round(hour_of_day, 2), # keep for display/analysis if needed
+                        "User_ID": u.user_id,
+                        "Lat": u.current_lat, 
+                        "Lon": u.current_lon,
+                        "State": u.coverage_type
+                    })
+            else:    
+                user_animation_data.append({
+                    "Hour": f"Hour {absolute_hour:.1f}",  # "Hour 0.0", "Hour 24.0", "Hour 48.0" — always unique
+                    "Hour_of_Day": round(hour_of_day, 2), # keep for display/analysis if needed
+                    "User_ID": u.user_id,
+                    "Lat": u.current_lat, 
+                    "Lon": u.current_lon,
+                    "State": u.coverage_type
+                })
 
             # --- NEW: Write the Drop Log to memory ---
             if u.current_demand > 0.1:
@@ -227,6 +255,14 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
 
         dropped_traffic = sum(sum(e["unmet_mbps"] for e in u_list) for u_list in unmet_demand_ledger.values())
         total_served_ntn = leo_total_load - dropped_traffic
+
+        if user_animation_data:
+            pd.DataFrame(user_animation_data).to_csv("user_hourly_states.csv", mode='a', header=False, index=False)
+            user_animation_data.clear() # Frees the RAM instantly!
+            
+        if detailed_drop_log:
+            pd.DataFrame(detailed_drop_log).to_csv("detailed_drop_log.csv", mode='a', header=False, index=False)
+            detailed_drop_log.clear()  # Frees the RAM instantly!
         
         summary_data.append({
             "Time_s": t_s, "Hour": round(hour_of_day, 2),
@@ -240,8 +276,8 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
         print(f"  [t={t_s:05d}s | {hour_of_day:04.1f}h] Demand: {total_demand:7.1f} | TN Served: {total_served_tn:7.1f} | NTN Served: {total_served_ntn:7.1f} | Dropped: {dropped_traffic:7.1f} Mbps")
         
     pd.DataFrame(user_data_export).to_csv("users_initial_state.csv", index=False)
-    pd.DataFrame(user_animation_data).to_csv("user_hourly_states.csv", index=False)
-    pd.DataFrame(detailed_drop_log).to_csv("detailed_drop_log.csv", index=False) # NEW: Generate the CSV
+    #pd.DataFrame(user_animation_data).to_csv("user_hourly_states.csv", index=False)
+    #pd.DataFrame(detailed_drop_log).to_csv("detailed_drop_log.csv", index=False) # NEW: Generate the CSV
     pd.DataFrame(summary_data).to_csv("system_summary_table.csv", index=False)
 
     print("\n✅ Simulation Complete. Generated all export files.")

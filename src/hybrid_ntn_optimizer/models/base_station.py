@@ -3,21 +3,44 @@ import math
 from dataclasses import dataclass, field
 from hybrid_ntn_optimizer.core.utils import haversine_distance
 from typing import Any, List, Set
+from enum import Enum
+
+# We keep the Enum here or in a shared constants file to act as the routing key
+class DeploymentScenario(Enum):
+    UMA    = "UMA"
+    UMI    = "UMI"
+    RMA    = "RMA"
+    INH    = "INH"
+    INF_SH = "INF_SH"
 
 @dataclass
 class BaseStation:
+    # 1. Identity & Geography
     bs_id: int
     lat: float
     lon: float
-    capacity_mbps: float  # Backhaul capacity
+    scenario: DeploymentScenario  # Now this BS knows its 3GPP identity
+
+    # 2. RF / Physical Layer Parameters (Fed from config)
+    p_tx_dbm: float
+    g_tx_dbi: float
+    carrier_freq_hz: float
     total_bandwidth_hz: float
+    capacity_mbps: float  
+    bs_height_m: float
+    min_user_dist_m: float
+    interference_cutoff_m: float
+    
+    # 3. 3GPP Physics Parameters (Fed from config)
+    shadow_sigma_los_db: float
+    shadow_sigma_nlos_db: float
+    
+    # 4. Simulation State
     use_physical_radius: bool = False
     coverage_radius_km: float = 0.0
-    
     center_h3_id: str = field(init=False)
     covered_h3_ids: Set[str] = field(default_factory=set)
     
-    # NEW: State tracking for the simulation loop
     active_users: int = 0
     remaining_bandwidth_hz: float = field(init=False)         
     attached_users: List[Any] = field(default_factory=list)     

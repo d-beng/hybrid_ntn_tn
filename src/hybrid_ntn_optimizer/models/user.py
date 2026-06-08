@@ -5,6 +5,7 @@ from typing import List, Tuple, Dict, Any
 
 @dataclass
 class User:
+    """
     user_id: int
     home_lat: float
     home_lon: float
@@ -31,6 +32,88 @@ class User:
     pf_score: float = 0.0                 # Network priority ranking
     attractors: List[Tuple[float, float]] = field(default_factory=list)
     attractor_probs: np.ndarray = field(default_factory=lambda: np.array([]))
+    """
+
+    __slots__ = [
+        # --- Identity & Profiles ---
+        'user_id',
+        'user_type',
+        'profile_type',
+        
+        # --- Geography & Mobility ---
+        'home_lat',
+        'home_lon',
+        'current_lat',
+        'current_lon',
+        'current_h3_id',
+        'attractors',
+        'attractor_probs',
+        'diurnal_cfg',
+        'mobility_cfg',
+        
+        # --- Traffic & Demand ---
+        'qos_min_mbps',
+        'base_demand_mbps',
+        'current_demand',
+        'served_mbps',
+        'historical_avg_mbps',
+        
+        # --- RF Physics & Scheduling ---
+        'spectral_efficiency',
+        'achievable_rate_mbps',
+        'pf_score',
+        
+        # --- Network State & Routing ---
+        'coverage_type',
+        'current_state',
+        'locked_to_tn',
+        
+        # --- Detailed Drop Diagnostics ---
+        'tn_cell_id',
+        'tn_eval_bs',
+        'tn_eval_hz',
+        'tn_reason',
+        'ntn_eval_beam',
+        'ntn_eval_hz',
+        'ntn_reason'
+    ]
+
+    def __init__(self, user_id, home_lat, home_lon, user_type="Unknown", base_demand_mbps=0.0, diurnal_cfg=None, mobility_cfg=None, qos_min_mbps=0.1):
+        # Your existing init code goes here!
+        self.user_id = user_id
+        self.home_lat = home_lat
+        self.home_lon = home_lon
+        self.user_type = user_type
+        self.base_demand_mbps = base_demand_mbps
+        self.diurnal_cfg = diurnal_cfg
+        self.mobility_cfg = mobility_cfg
+        self.qos_min_mbps = qos_min_mbps
+        
+        # Initialize the other slots to None/0 so they exist in memory
+        self.current_lat = home_lat
+        self.current_lon = home_lon
+        self.current_h3_id = ""
+        self.attractors = []
+        self.attractor_probs = []
+        self.profile_type = "Unknown"
+        self.current_demand = 0.0
+        self.served_mbps = 0.0
+        self.historical_avg_mbps = 0.1
+        self.spectral_efficiency = 0.0
+        self.achievable_rate_mbps = 0.0
+        self.pf_score = 0.0
+        self.coverage_type = "IDLE"
+        self.current_state = "IDLE"
+        self.locked_to_tn = False
+        
+        # Diagnostics
+        self.tn_cell_id = -1
+        self.tn_eval_bs = "None"
+        self.tn_eval_hz = 0.0
+        self.tn_reason = "N/A"
+        self.ntn_eval_beam = "None"
+        self.ntn_eval_hz = 0.0
+        self.ntn_reason = "N/A"
     
     def __post_init__(self):
         self.current_lat = self.home_lat

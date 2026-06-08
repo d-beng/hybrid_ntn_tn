@@ -45,3 +45,9 @@ RAIN_FADE_MARGIN_DB: float = 3.0          # dB  ITU-R P.618 temperate climate
 DEFAULT_TIME_STEP_S: float = 60.0         # s   propagation / snapshot cadence
 DEFAULT_MIN_ELEVATION_DEG: float = 25.0   # deg minimum elevation angle for service
 DEFAULT_EPOCH: str = "2024-01-01T00:00:00"  # ISO-8601 UTC
+
+
+
+# Effective environment height h_E [m] for breakpoint computation
+# TR 38.901 Table 7.4.1-1 Note 1: applies to both UMa and UMi
+_H_E = 1.0   # [m]
