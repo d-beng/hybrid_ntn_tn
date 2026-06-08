@@ -258,7 +258,7 @@ def run_daily_mobility_simulation(cfg: DictConfig, users: List[User], base_stati
 
         if user_animation_data:
             pd.DataFrame(user_animation_data).to_csv("user_hourly_states.csv", mode='a', header=False, index=False)
-            user_animation_data.clear() # Frees the RAM instantly!
+            #user_animation_data.clear() # Frees the RAM instantly!
             
         if detailed_drop_log:
             pd.DataFrame(detailed_drop_log).to_csv("detailed_drop_log.csv", mode='a', header=False, index=False)

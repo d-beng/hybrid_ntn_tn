@@ -1,3 +1,4 @@
+import pandas as pd
 import hydra
 from omegaconf import DictConfig
 
@@ -85,7 +86,15 @@ def run_simulation(cfg: DictConfig):
         leo=leo, 
         region=active_region
     )
+    #print("📊 Loading sampled animation data from disk for visualization...")
+    
+    # Read the memory-safe 1% sample we flushed to the hard drive
+    #user_animation_df = pd.read_csv("user_hourly_states.csv")
+    
+    # Convert it back into the list-of-dictionaries format your plotter expects
+    #user_animation_data = user_animation_df.to_dict('records')
 
+    
     # ==========================================
     # PHASE 5: THE MASTER VISUALIZATION
     # ==========================================
