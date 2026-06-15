@@ -144,8 +144,8 @@ TN_BS_CAPACITY_MBPS = TN_BS_CAPACITY_GBPS * 1000
 TN_BW_MHZ = st.sidebar.slider("BS Bandwidth (MHz)", 10, 800, 400, 10)
 
 with st.sidebar.expander("Advanced 5G RF Parameters"):
-    TN_RADIUS_MIN_KM = st.sidebar.slider("Minimum BS Coverage Radius (km)", 1.0, 3.0, 1.0, 0.1)
-    TN_RADIUS_MAX_KM = st.sidebar.slider("Maximum BS Coverage Radius (km)", 1.0, 5.0, 5.0, 0.1)
+    TN_RADIUS_MIN_KM = st.sidebar.slider("Minimum BS Coverage Radius (km)", 0.1, 0.47, 0.1, 0.01)
+    TN_RADIUS_MAX_KM = st.sidebar.slider("Maximum BS Coverage Radius (km)", 0.311, 3.0, 3.0, 0.01)
     if TN_RADIUS_MAX_KM < TN_RADIUS_MIN_KM:
         TN_RADIUS_MAX_KM = TN_RADIUS_MIN_KM
         st.warning("Maximum BS radius was raised to match the minimum radius.")

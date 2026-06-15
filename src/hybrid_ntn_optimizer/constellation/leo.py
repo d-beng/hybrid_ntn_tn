@@ -58,7 +58,7 @@ class LEOConstellation:
                 freq_band=FrequencyBand.KU,
                 eirp_dbw=self.eirp_dbw,
                 g_t_db=self.g_t_db,
-                name_prefix=self.name.upper().replace(" ", "-")[:12],
+                name_prefix=self.name.upper().replace(" ", "-"),
                 max_spot_beams=self.max_spot_beams,
                 beam_radius_nadir_km=self.beam_radius_nadir_km,
                 max_steering_angle_deg=self.max_steering_angle_deg

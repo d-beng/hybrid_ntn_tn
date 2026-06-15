@@ -1,26 +1,61 @@
 constellation:
-  name: "Starlink-Shell-1"
-  altitude_km: 550.0
-  inclination_deg: 53.0
-  num_planes: 72
-  total_satellites: 1584
-  phasing: 1
-  eirp_dbw: 50.0
-  g_t_db: -25.12 # corrected: G=35dBi, T=150K → G/T=13.2 dB/K
+  # ==========================================
+  # GLOBAL NTN RF PARAMETERS (Shared across all shells)
+  # ==========================================
+  eirp_dbw: 50.0 #IF WE USE 2.2 GHz Starlink's Gen 1 S-band is around 50 dBW, but with a larger dish at 12 GHz, +14dB.
+  g_t_db: -25.12 
   min_elevation_deg: 25.0
   apply_j2: true
-
-  # Hardware Constraints
-  max_spot_beams: 32
+  max_spot_beams: 50
   beam_radius_nadir_km: 120.0
   max_steering_angle_deg: 45.0
+  freq_ghz: 2.2                     
+  bandwidth_hz: 300000000           
+  sinr_min_db: 0.0              
+  theta_3db_deg: 7.5    #Basically too much for S-band, because it ll generate interference. So if we increase cell size, it ll be logical. Otherwise, it should be 1.5~2.0 degrees for S-band. But we can keep it at 7.5 for a more realistic Starlink Gen 1 simulation, which has wider beams in S-band.
+  sll_db: 25.0                  
+  weather_loss_db: 1.0      
 
   # ==========================================
-  # NEW: 3GPP Antenna and RF Parameters
+  # MULTI-SHELL ORBITAL GEOMETRY (Starlink Gen 1)
   # ==========================================
-  freq_ghz: 2.2                     # S-band frequency (2.2 GHz) for NTN ku-band 10-12 GHz
-  bandwidth_hz: 300000000           # 40 MHz satellite channel
-  sinr_min_db: 0.0              # NTN minimum SINR (Starlink can go down to -10 dB or -5.00, but we'll be conservative)
-  theta_3db_deg: 7.5            # Half-power beamwidth
-  sll_db: 25.0                  # Side-Lobe Level (isolation)
-  weather_loss_db: 1.0      # was missing — defaults to 1.0 in code
+  shells:
+    shell_1:
+      name: "Starlink-Shell-1"
+      altitude_km: 550.0
+      inclination_deg: 53.0
+      num_planes: 72
+      total_satellites: 1584
+      phasing: 1
+      
+    shell_2:
+      name: "Starlink-Shell-2"
+      altitude_km: 540.0
+      inclination_deg: 53.2
+      num_planes: 72
+      total_satellites: 1584
+      phasing: 1
+      
+    shell_3:
+      name: "Starlink-Shell-3"
+      altitude_km: 560.0
+      inclination_deg: 97.6
+      num_planes: 6
+      total_satellites: 348
+      phasing: 1
+      
+    shell_4:
+      name: "Starlink-Shell-4"
+      altitude_km: 570.0
+      inclination_deg: 70.0
+      num_planes: 36
+      total_satellites: 720
+      phasing: 1
+      
+    shell_5:
+      name: "Starlink-Shell-5"
+      altitude_km: 560.0
+      inclination_deg: 97.6
+      num_planes: 4
+      total_satellites: 172
+      phasing: 1

@@ -13,7 +13,7 @@ from hybrid_ntn_optimizer.constellation.visibility import visible_satellites
 
 def allocate_ntn_beams(
     cfg: DictConfig,
-    leo: LEOConstellation,
+    leos: List[LEOConstellation],  # <--- Accepts the Mega-Constellation list
     unmet_demand_ledger: Dict[str, List[Dict[str, Any]]],
     dt_s: float,
 ) -> List[Beam]:
@@ -26,15 +26,18 @@ def allocate_ntn_beams(
     base_eirp_dbw    = cfg.constellation.get("eirp_dbw", 40.0)
     g_t_db           = cfg.constellation.get("g_t_db", 10.0)   
     f_ntn            = cfg.constellation.get("freq_ghz", 2.2)
-    bw_ntn           = cfg.constellation.get("bandwidth_hz", 40e6) # Physical Channel (e.g., 40 MHz)
+    bw_ntn           = cfg.constellation.get("bandwidth_hz", 40e6) 
     sinr_min_ntn     = cfg.constellation.get("sinr_min_db", 0.0)
     theta_3db        = cfg.constellation.get("theta_3db_deg", 2.5)
     sll              = cfg.constellation.get("sll_db", 25.0)
-    #print(f"NTN Beam Allocation Parameters: max_spot_beams={max_spot_beams}, min_elevation={min_elevation}°, EIRP={base_eirp_dbw} dBW, G/T={g_t_db} dB/K, freq={f_ntn} GHz, bw={bw_ntn/1e6} MHz, SINR_min={sinr_min_ntn} dB, theta_3db={theta_3db}°, SLL={sll} dB")
 
-    # ── 2. Snapshot: orbital positions + Skyfield objects ───────
-    sat_states  = leo.snapshot(dt_s=dt_s)
-    earth_sats  = [build_earth_satellite(d, leo.epoch_utc) for d in leo.descriptors]
+    # ── 2. Snapshot: Aggregate orbital positions from ALL shells ───────
+    sat_states = []
+    earth_sats = []
+    
+    for leo in leos:
+        sat_states.extend(leo.snapshot(dt_s=dt_s))
+        earth_sats.extend([build_earth_satellite(d, leo.epoch_utc) for d in leo.descriptors])
 
     # Reset active beams for this timestep
     for sat in sat_states:
@@ -62,7 +65,7 @@ def allocate_ntn_beams(
         hex_lat, hex_lon = h3.cell_to_latlng(hex_id)
         target_ground = GeoPoint(lat_deg=hex_lat, lon_deg=hex_lon)
 
-        # Find the best visible satellite with a free beam slot
+        # Find the best visible satellite across ALL shells
         visible_recs = visible_satellites(
             states=sat_states,
             ground=target_ground,
@@ -82,7 +85,6 @@ def allocate_ntn_beams(
                 best_record = rec
                 break
 
-        # --- DIAGNOSTIC: Log if there are no satellites in the sky ---
         if best_sat is None or best_record is None:
             for entry in needy_hex["users"]:
                 entry["user"].ntn_reason = "No Satellite Overhead"
@@ -107,7 +109,7 @@ def allocate_ntn_beams(
         for entry in eligible_entries:
             u = entry["user"]
             
-            # A. The "Flashlight Effect" (How far is user from beam center?)
+            # A. The "Flashlight Effect"
             dist_from_center_km = haversine_distance(u.current_lat, u.current_lon, hex_lat, hex_lon) / 1000.0
             user_theta_deg = math.degrees(math.atan2(dist_from_center_km, slant_range_km))
             
@@ -115,12 +117,11 @@ def allocate_ntn_beams(
             roll_off_db = min(12.0 * (user_theta_deg / theta_3db) ** 2, sll)
             effective_eirp_dbw = base_eirp_dbw - roll_off_db
             
-            # C. Calculate true SINR and Spectral Efficiency (bits/sec/Hz) for THIS specific user
-            #print(effective_eirp_dbw)
+            # C. Calculate true SINR
             sinr_ntn_db, capacity_mbps, spec_eff = calculate_ntn_sinr_capacity(
                 slant_range_km=slant_range_km,
                 off_axis_angles_deg=off_axis_angles_interferers,
-                eirp_dbw=effective_eirp_dbw, # Pass their penalized EIRP!
+                eirp_dbw=effective_eirp_dbw, 
                 g_t_db=g_t_db,
                 freq_ghz=f_ntn,
                 bandwidth_hz=bw_ntn,
@@ -130,21 +131,18 @@ def allocate_ntn_beams(
             
             # D. Proportional Fair Scoring
             u.spectral_efficiency = spec_eff
-            u.achievable_rate_mbps = (bw_ntn * spec_eff) / 1e6 # Max rate if they got the whole 40 MHz channel
+            u.achievable_rate_mbps = (bw_ntn * spec_eff) / 1e6 
             
-            # If signal is dead, tank their score so they get skipped
             if sinr_ntn_db < sinr_min_ntn or spec_eff <= 0.0:
-                #print(True, f"User {u.user_id} in hex {hex_id} has SINR {sinr_ntn_db:.1f} dB and Spectral Efficiency {spec_eff:.2f} bps/Hz - BELOW THRESHOLD, marking as DROPPED")
                 u.pf_score = -1.0 
-                u.ntn_reason = f"NTN SINR too low ({sinr_ntn_db:.1f} dB)"       # <-- DIAGNOSTIC LOG
-                u.ntn_eval_beam = f"Sat_{best_sat.satellite_id}"                # <-- DIAGNOSTIC LOG
+                u.ntn_reason = f"NTN SINR too low ({sinr_ntn_db:.1f} dB)"
+                u.ntn_eval_beam = f"Sat_{best_sat.satellite_id}"  
             else:
                 u.pf_score = u.achievable_rate_mbps / max(0.1, getattr(u, 'historical_avg_mbps', 0.1))
 
-        # Sort users by highest Priority Score
         eligible_entries.sort(key=lambda x: x["user"].pf_score, reverse=True)
 
-        # ── 6. BANDWIDTH EXHAUSTION (Draining physical Hertz) ─────────────────
+        # ── 6. BANDWIDTH EXHAUSTION ─────────────────
         new_beam = Beam(
             satellite_id=best_sat.satellite_id,
             target_cell_id=hex_id,
@@ -159,48 +157,43 @@ def allocate_ntn_beams(
             u = entry["user"]
             
             if u.pf_score < 0:
-                u.current_state = "DROPPED" # Signal was too bad to serve
+                u.current_state = "DROPPED" 
                 continue
                 
-            # --- DIAGNOSTIC: Log the state of the beam right before the user is scheduled ---
             u.ntn_eval_beam = f"Sat_{best_sat.satellite_id}"
             u.ntn_eval_hz = remaining_beam_hz
 
             if remaining_beam_hz <= 0:
-                u.ntn_reason = "NTN Beam Congested (Empty)" # <-- DIAGNOSTIC LOG
+                u.ntn_reason = "NTN Beam Congested (Empty)" 
                 u.current_state = "DROPPED"
-                continue # Keep looping to log the rest of the users
+                continue 
 
             demand_mbps = entry["unmet_mbps"]
             
-            # Convert Mbps demand into physical Hertz cost
             required_hz = (demand_mbps * 1e6) / u.spectral_efficiency
             min_qos_hz = (u.qos_min_mbps * 1e6) / u.spectral_efficiency
 
             if remaining_beam_hz >= min_qos_hz:
-                # Give them what they need, up to whatever bandwidth is left
                 allocated_hz = min(required_hz, remaining_beam_hz)
                 remaining_beam_hz -= allocated_hz
                 
                 served = (allocated_hz * u.spectral_efficiency) / 1e6
                 entry["unmet_mbps"] -= served
-                u.served_mbps += served # Add to whatever they might have gotten from 5G (if Multi-Connectivity is on)
+                u.served_mbps += served 
                 
                 new_beam.allocated_mbps += served
                 new_beam.active_users += 1
                 
                 if entry["unmet_mbps"] <= 0.1:
                     u.current_state = "LEO"
-                    u.ntn_reason = "Fully Served" # <-- DIAGNOSTIC LOG
+                    u.ntn_reason = "Fully Served" 
                 else:
-                    u.current_state = "DROPPED" # They got data, but didn't hit their full demand (Congested)
-                    u.ntn_reason = "Partially Served (Congested)" # <-- DIAGNOSTIC LOG
+                    u.current_state = "DROPPED" 
+                    u.ntn_reason = "Partially Served (Congested)" 
             else:
-                # Beam cannot satisfy minimum QoS
                 u.current_state = "DROPPED"
-                u.ntn_reason = f"NTN Bandwidth too low for QoS (Req: {min_qos_hz/1e6:.1f} MHz)" # <-- DIAGNOSTIC LOG
+                u.ntn_reason = f"NTN Bandwidth too low for QoS (Req: {min_qos_hz/1e6:.1f} MHz)" 
                 
-            # Update history for next hour's PF score
             u.historical_avg_mbps = (0.8 * getattr(u, 'historical_avg_mbps', 0.1)) + (0.2 * u.served_mbps)
 
         # ── 7. Commit Beam ───────────────────────────────────────────────────

@@ -23,14 +23,14 @@ def run_simulation(cfg: DictConfig):
 
     # 2. Simulation Loop
     # We will step through time to see satellites moving
-    steps = int(cfg.sim_duration_s / cfg.time_step_s)
+    steps = int(cfg.simulation.duration_s / cfg.simulation.time_step_s)
     
-    print(f"\nSimulating {cfg.sim_duration_s}s at {cfg.observer.name} ({cfg.observer.lat}, {cfg.observer.lon})")
+    print(f"\nSimulating {cfg.simulation.duration_s}s at {cfg.observer.name} ({cfg.observer.lat}, {cfg.observer.lon})")
     print(f"{'Time (s)':<10} | {'Visible':<8} | {'Best Satellite':<20} | {'Elev (deg)':<10}")
     print("-" * 60)
 
     for step in range(steps + 1):
-        dt_s = step * cfg.time_step_s
+        dt_s = step * cfg.simulation.time_step_s
         
         # Check visibility for the observer
         visible_sats = leo.visible_from(
@@ -56,15 +56,15 @@ def run_simulation(cfg: DictConfig):
         plot_global_constellation(leo, dt_s=0.0, save_path="constellation_start.png")
 
     if cfg.visualize_2d:
-        plot_2d_interactive_animation(leo, cfg.sim_duration_s, cfg.time_step_s)
+        plot_2d_interactive_animation(leo, cfg.simulation.duration_s, cfg.simulation.time_step_s)
         
     if cfg.visualize_3d:
-        plot_3d_animated_globe(leo, cfg.sim_duration_s, cfg.time_step_s)
+        plot_3d_animated_globe(leo, cfg.simulation.duration_s, cfg.simulation.time_step_s)
     plot_hex_coverage_animation(
         leo=leo, 
         region=active_region, 
-        duration_s=cfg.sim_duration_s, 
-        time_step_s=cfg.time_step_s
+        duration_s=cfg.simulation.duration_s, 
+        time_step_s=cfg.simulation.time_step_s
     )
     print("\nPropagation test complete. Files generated.")
 

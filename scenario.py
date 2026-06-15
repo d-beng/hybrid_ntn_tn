@@ -19,7 +19,7 @@ from hybrid_ntn_optimizer.visualization.plots import plot_master_hybrid_animatio
 @hydra.main(version_base=None, config_path="configs", config_name="base")
 def run_simulation(cfg: DictConfig):
     print("\n" + "="*50)
-    print("🚀 INITIALIZING HYBRID NTN-TN SIMULATOR")
+    print("🚀 INITIALIZING HYBRID NTN-TN SIMULATOR (MEGA-CONSTELLATION)")
     print("="*50)
     
     # ==========================================
@@ -35,31 +35,39 @@ def run_simulation(cfg: DictConfig):
     tessellate_region(active_region, pad_edges=True)
     
     # ==========================================
-    # PHASE 2: THE SPACE SEGMENT
+    # PHASE 2: THE SPACE SEGMENT (MULTI-SHELL)
     # ==========================================
-    print("\n[Phase 2] Generating Space Segment (LEO Constellation)...")
+    print("\n[Phase 2] Generating Space Segment (Mega-Constellation)...")
     
-    # Dynamically read orbital mechanics from YAML
-    walker_params = WalkerParameters(
-        total_satellites=cfg.constellation.total_satellites,
-        num_planes=cfg.constellation.num_planes,
-        phasing=cfg.constellation.phasing,
-        inclination_deg=cfg.constellation.inclination_deg,
-        altitude_km=cfg.constellation.altitude_km,
-        orbit_type=OrbitType.LEO
-    )
+    leos = []
+    total_sats_deployed = 0
     
-    # Launch the constellation with hardware parameters
-    leo = LEOConstellation(
-        params=walker_params,
-        name=cfg.constellation.get("name", "Starlink-Shell-1"),
-        eirp_dbw=cfg.constellation.get("eirp_dbw", 40.0),
-        g_t_db=cfg.constellation.get("g_t_db", 10.0),
-        max_spot_beams=cfg.constellation.get("max_spot_beams", 15),
-        beam_radius_nadir_km=cfg.constellation.get("beam_radius_nadir_km", 200.0),
-        max_steering_angle_deg=cfg.constellation.get("max_steering_angle_deg", 45.0)
-    )
-    print(f"✅ Deployed {leo.num_satellites} satellites into {walker_params.num_planes} orbital planes.")
+    # Loop through the shells defined in the YAML
+    for shell_key, shell_cfg in cfg.constellation.shells.items():
+        walker_params = WalkerParameters(
+            total_satellites=shell_cfg.total_satellites,
+            num_planes=shell_cfg.num_planes,
+            phasing=shell_cfg.phasing,
+            inclination_deg=shell_cfg.inclination_deg,
+            altitude_km=shell_cfg.altitude_km,
+            orbit_type=OrbitType.LEO
+        )
+        
+        # Instantiate the shell using the global RF settings
+        shell = LEOConstellation(
+            params=walker_params,
+            name=shell_cfg.name,
+            eirp_dbw=cfg.constellation.get("eirp_dbw", 40.0),
+            g_t_db=cfg.constellation.get("g_t_db", 10.0),
+            max_spot_beams=cfg.constellation.get("max_spot_beams", 15),
+            beam_radius_nadir_km=cfg.constellation.get("beam_radius_nadir_km", 200.0),
+            max_steering_angle_deg=cfg.constellation.get("max_steering_angle_deg", 45.0)
+        )
+        leos.append(shell)
+        total_sats_deployed += shell.num_satellites
+        print(f"  -> Deployed {shell.name}: {shell.num_satellites} satellites at {shell_cfg.altitude_km}km.")
+        
+    print(f"✅ Mega-Constellation Deployed: {total_sats_deployed} total satellites across {len(leos)} shells.")
     
     # ==========================================
     # PHASE 3: THE GROUND SEGMENT
@@ -78,22 +86,14 @@ def run_simulation(cfg: DictConfig):
     # ==========================================
     print("\n[Phase 4] Initiating 24-Hour Mobility & Traffic Engine...")
     
-    # Pass all our generated objects into the simulation engine
-    beam_animation_data,user_animation_data = run_daily_mobility_simulation(
+    # Pass the LIST of constellations (leos) into the simulation engine
+    beam_animation_data, user_animation_data = run_daily_mobility_simulation(
         cfg=cfg, 
         users=users, 
         base_stations=towers, 
-        leo=leo, 
+        leos=leos, 
         region=active_region
     )
-    #print("📊 Loading sampled animation data from disk for visualization...")
-    
-    # Read the memory-safe 1% sample we flushed to the hard drive
-    #user_animation_df = pd.read_csv("user_hourly_states.csv")
-    
-    # Convert it back into the list-of-dictionaries format your plotter expects
-    #user_animation_data = user_animation_df.to_dict('records')
-
     
     # ==========================================
     # PHASE 5: THE MASTER VISUALIZATION
